@@ -68,10 +68,6 @@ export default function HomePage() {
 
       navigate(editSummaryPath(USER_ID, data.patientId, data.extractionId), {
         replace: true,
-        state: {
-          docxBlob: data.docxBlob,
-          filename: data.filename,
-        },
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed')

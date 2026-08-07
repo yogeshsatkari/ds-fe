@@ -25,20 +25,27 @@ export function editSummaryPath(userId, patientId, extractionId) {
   return `/edit/${userId}/${patientId}/${extractionId}`
 }
 
-export async function fetchExtractionDocx(userId, patientId, extractionId) {
+export async function fetchDischargeSummaryDocx(userId, patientId, extractionId) {
   const res = await fetch(
     `${API_BASE_URL}/extractions/${userId}/${patientId}/${extractionId}/discharge-summary.docx`,
   )
 
   if (!res.ok) {
-    await parseError(res)
+    const data = await res.json().catch(() => ({}))
+    const detail =
+      typeof data.detail === 'string'
+        ? data.detail
+        : `Failed to load discharge summary (${res.status})`
+    const error = new Error(detail)
+    error.status = res.status
+    throw error
   }
 
-  const docxBlob = await res.blob()
+  const blob = await res.blob()
   const filename =
     parseFilename(res.headers.get('Content-Disposition')) ?? 'discharge-summary.docx'
 
-  return { docxBlob, filename }
+  return { blob, filename }
 }
 
 export async function extractToDocx({ userId = USER_ID, files, patientId = null }) {
@@ -68,9 +75,12 @@ export async function extractToDocx({ userId = USER_ID, files, patientId = null 
   return { patientId: patientIdOut, extractionId, docxBlob, filename }
 }
 
-export async function convertDocxToPdf(docxFile) {
+export async function convertDocxToPdf(docxFile, { userId, patientId, extractionId }) {
   const form = new FormData()
   form.append('file', docxFile)
+  form.append('user_id', userId)
+  form.append('patient_id', patientId)
+  form.append('extraction_id', extractionId)
 
   const res = await fetch(`${API_BASE_URL}/convert/docx-to-pdf`, {
     method: 'POST',
@@ -81,7 +91,11 @@ export async function convertDocxToPdf(docxFile) {
     await parseError(res)
   }
 
-  return res.blob()
+  const pdfBlob = await res.blob()
+  const filename =
+    parseFilename(res.headers.get('Content-Disposition')) ?? 'discharge-summary.pdf'
+
+  return { pdfBlob, filename }
 }
 
 export async function fetchContextJson(userId, patientId, extractionId) {

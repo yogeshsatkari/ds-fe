@@ -9,7 +9,13 @@ import './DocxSummaryEditor.css'
 const DOCX_MIME =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
-export default function DocxSummaryEditor({ documentBlob, fileName = 'discharge-summary.docx' }) {
+export default function DocxSummaryEditor({
+  documentBlob,
+  fileName = 'discharge-summary.docx',
+  userId,
+  patientId,
+  extractionId,
+}) {
   const editorRef = useRef(null)
   const [documentBytes, setDocumentBytes] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -80,9 +86,12 @@ export default function DocxSummaryEditor({ documentBlob, fileName = 'discharge-
         throw new Error('Nothing to save yet. Wait for the editor to finish loading.')
       }
       const docxFile = new File([buffer], fileName, { type: DOCX_MIME })
-      const pdfBlob = await convertDocxToPdf(docxFile)
-      const pdfName = fileName.replace(/\.docx$/i, '.pdf')
-      downloadBlob(pdfBlob, pdfName)
+      const { pdfBlob, filename } = await convertDocxToPdf(docxFile, {
+        userId,
+        patientId,
+        extractionId,
+      })
+      downloadBlob(pdfBlob, filename)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'PDF conversion failed')
     } finally {

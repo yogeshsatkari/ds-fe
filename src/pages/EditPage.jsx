@@ -1,47 +1,43 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
-import { fetchExtractionDocx } from '../api/dischargeApi.js'
-import { loadExtractionDocx } from '../utils/extractionStore.js'
+import { Link, useParams } from 'react-router-dom'
+import { fetchDischargeSummaryDocx } from '../api/dischargeApi.js'
 import DocxSummaryEditor from '../components/DocxSummaryEditor.jsx'
 import LoadingPanel from '../components/LoadingPanel.jsx'
 import ErrorAlert from '../components/ErrorAlert.jsx'
 
 export default function EditPage() {
   const { userId, patientId, extractionId } = useParams()
-  const location = useLocation()
-  const [docxBlob, setDocxBlob] = useState(location.state?.docxBlob ?? null)
-  const [filename, setFilename] = useState(location.state?.filename ?? 'discharge-summary.docx')
-  const [loading, setLoading] = useState(!location.state?.docxBlob)
+  const [docxBlob, setDocxBlob] = useState(null)
+  const [filename, setFilename] = useState('discharge-summary.docx')
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    if (location.state?.docxBlob) {
-      return
-    }
-
     let cancelled = false
 
     async function loadDocument() {
       setLoading(true)
       setError(null)
+      setNotFound(false)
+      setDocxBlob(null)
 
       try {
-        const cached = await loadExtractionDocx(userId, patientId, extractionId)
+        const { blob, filename: loadedFilename } = await fetchDischargeSummaryDocx(
+          userId,
+          patientId,
+          extractionId,
+        )
         if (cancelled) return
 
-        if (cached?.blob) {
-          setDocxBlob(cached.blob)
-          setFilename(cached.filename ?? 'discharge-summary.docx')
-          return
-        }
-
-        const remote = await fetchExtractionDocx(userId, patientId, extractionId)
-        if (cancelled) return
-
-        setDocxBlob(remote.docxBlob)
-        setFilename(remote.filename)
+        setDocxBlob(blob)
+        setFilename(loadedFilename)
       } catch (err) {
-        if (!cancelled) {
+        if (cancelled) return
+
+        if (err instanceof Error && err.status === 404) {
+          setNotFound(true)
+        } else {
           setError(
             err instanceof Error
               ? err.message
@@ -60,7 +56,7 @@ export default function EditPage() {
     return () => {
       cancelled = true
     }
-  }, [userId, patientId, extractionId, location.state])
+  }, [userId, patientId, extractionId])
 
   return (
     <div className="min-h-svh bg-slate-50">
@@ -71,7 +67,9 @@ export default function EditPage() {
               <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
                 Edit discharge summary
               </h1>
-              <p className="mt-0.5 text-sm text-slate-500">{filename}</p>
+              {!loading && !notFound && (
+                <p className="mt-0.5 text-sm text-slate-500">{filename}</p>
+              )}
             </div>
             <Link
               to="/"
@@ -91,10 +89,31 @@ export default function EditPage() {
           />
         )}
 
+        {notFound && !loading && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-6 text-center">
+            <p className="text-sm font-medium text-amber-900">Summary not found</p>
+            <p className="mt-1 text-sm text-amber-800">
+              This link may be invalid or the summary was never generated.
+            </p>
+            <Link
+              to="/"
+              className="mt-4 inline-block rounded-md bg-clinical-600 px-4 py-2 text-sm font-medium text-white hover:bg-clinical-700"
+            >
+              Upload documents
+            </Link>
+          </div>
+        )}
+
         <ErrorAlert message={error} onDismiss={() => setError(null)} />
 
-        {!loading && !error && docxBlob && (
-          <DocxSummaryEditor documentBlob={docxBlob} fileName={filename} />
+        {!loading && !notFound && !error && docxBlob && (
+          <DocxSummaryEditor
+            documentBlob={docxBlob}
+            fileName={filename}
+            userId={userId}
+            patientId={patientId}
+            extractionId={extractionId}
+          />
         )}
       </main>
     </div>
