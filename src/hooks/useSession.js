@@ -1,14 +1,11 @@
 import { useCallback, useState } from 'react'
 
-const STORAGE_KEY = 'ds-workflow-state'
+const STORAGE_KEY = 'ds-session'
 
 const emptyState = {
-  templateId: null,
-  templateViewUrl: null,
   patientId: null,
   extractionId: null,
-  summaryId: null,
-  summaryViewUrl: null,
+  filename: null,
 }
 
 function readStored() {
@@ -30,11 +27,11 @@ function persist(state) {
   }
 }
 
-export function useWorkflow() {
-  const [workflow, setWorkflow] = useState(readStored)
+export function useSession() {
+  const [session, setSession] = useState(readStored)
 
   const update = useCallback((patch) => {
-    setWorkflow((prev) => {
+    setSession((prev) => {
       const next = { ...prev, ...patch }
       persist(next)
       return next
@@ -42,9 +39,9 @@ export function useWorkflow() {
   }, [])
 
   const reset = useCallback(() => {
-    setWorkflow(emptyState)
+    setSession(emptyState)
     sessionStorage.removeItem(STORAGE_KEY)
   }, [])
 
-  return { workflow, update, reset }
+  return { session, update, reset }
 }

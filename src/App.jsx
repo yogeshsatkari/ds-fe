@@ -1,13 +1,12 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import WorkflowPage from './pages/WorkflowPage.jsx'
-import EditPage from './pages/EditPage.jsx'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import HomePage from './pages/HomePage.jsx'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<WorkflowPage />} />
-        <Route path="/edit" element={<EditPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/edit" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )
