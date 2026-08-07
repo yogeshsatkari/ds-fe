@@ -1,0 +1,30 @@
+/* Let wheel scroll continue to the page when the document hits an edge. */
+.docx-summary-editor .docx-editor__scroll-container,
+.docx-summary-editor .ep-one-surface__viewport {
+  overscroll-behavior: auto;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  header,
+  .docx-summary-editor__actions,
+  .no-print,
+  [data-step-nav] {
+    display: none !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .docx-summary-editor__surface {
+    border: none !important;
+    border-radius: 0 !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+}

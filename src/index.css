@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@import '@docx-editor.dev/core/styles/editor.css';
+
+@source "../node_modules/@docx-editor.dev/react/dist/index.mjs";
 
 @theme {
   --color-clinical-50: #f0fdfa;
