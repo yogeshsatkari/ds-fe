@@ -21,6 +21,26 @@ function parseFilename(disposition) {
   }
 }
 
+export function editSummaryPath(userId, patientId, extractionId) {
+  return `/edit/${userId}/${patientId}/${extractionId}`
+}
+
+export async function fetchExtractionDocx(userId, patientId, extractionId) {
+  const res = await fetch(
+    `${API_BASE_URL}/extractions/${userId}/${patientId}/${extractionId}/discharge-summary.docx`,
+  )
+
+  if (!res.ok) {
+    await parseError(res)
+  }
+
+  const docxBlob = await res.blob()
+  const filename =
+    parseFilename(res.headers.get('Content-Disposition')) ?? 'discharge-summary.docx'
+
+  return { docxBlob, filename }
+}
+
 export async function extractToDocx({ userId = USER_ID, files, patientId = null }) {
   const form = new FormData()
   form.append('user_id', userId)

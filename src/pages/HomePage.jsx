@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { IMAGE_ACCEPT, MAX_IMAGES, USER_ID } from '../config.js'
-import { extractToDocx } from '../api/dischargeApi.js'
+import { editSummaryPath, extractToDocx } from '../api/dischargeApi.js'
 import { useSession } from '../hooks/useSession.js'
+import { saveExtractionDocx } from '../utils/extractionStore.js'
 import FileDropzone from '../components/FileDropzone.jsx'
 import LoadingPanel from '../components/LoadingPanel.jsx'
 import ErrorAlert from '../components/ErrorAlert.jsx'
-import DocxSummaryEditor from '../components/DocxSummaryEditor.jsx'
 
 function truncateId(id) {
   if (!id) return ''
@@ -13,11 +14,11 @@ function truncateId(id) {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate()
   const { session, update, reset } = useSession()
   const [imageFiles, setImageFiles] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [result, setResult] = useState(null)
 
   const handleAddImages = (files) => {
     setImageFiles((prev) => [...prev, ...files].slice(0, MAX_IMAGES))
@@ -31,7 +32,6 @@ export default function HomePage() {
   const handleStartOver = () => {
     reset()
     setImageFiles([])
-    setResult(null)
     setError(null)
     setLoading(false)
   }
@@ -45,7 +45,6 @@ export default function HomePage() {
 
     setLoading(true)
     setError(null)
-    setResult(null)
 
     try {
       const data = await extractToDocx({
@@ -58,10 +57,24 @@ export default function HomePage() {
         extractionId: data.extractionId,
         filename: data.filename,
       })
-      setResult(data)
+
+      await saveExtractionDocx(
+        USER_ID,
+        data.patientId,
+        data.extractionId,
+        data.docxBlob,
+        data.filename,
+      )
+
+      navigate(editSummaryPath(USER_ID, data.patientId, data.extractionId), {
+        replace: true,
+        state: {
+          docxBlob: data.docxBlob,
+          filename: data.filename,
+        },
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed')
-    } finally {
       setLoading(false)
     }
   }
@@ -69,17 +82,17 @@ export default function HomePage() {
   return (
     <div className="min-h-svh bg-slate-50">
       <header className="shrink-0 border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
+        <div className="mx-auto max-w-3xl px-4 py-5 sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
                 Discharge Summary
               </h1>
               <p className="mt-0.5 text-sm text-slate-500">
-                Upload patient documents to generate and edit your discharge summary
+                Upload patient documents to generate a discharge summary
               </p>
             </div>
-            {(result || session.patientId) && (
+            {session.patientId && (
               <button
                 type="button"
                 onClick={handleStartOver}
@@ -93,7 +106,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <section className="space-y-5">
           <div>
             <h2 className="text-base font-semibold text-slate-800">Patient documents</h2>
@@ -157,25 +170,11 @@ export default function HomePage() {
               >
                 Generate summary
               </button>
-              {session.patientId && !result && (
+              {session.patientId && (
                 <p className="text-xs text-slate-500">
                   Re-using patient {truncateId(session.patientId)}
                 </p>
               )}
-            </div>
-          )}
-
-          {result && !loading && (
-            <div className="space-y-4 border-t border-slate-200 pt-6">
-              <div className="rounded-lg border border-clinical-200 bg-clinical-50 px-4 py-3 text-sm">
-                <p className="font-medium text-clinical-800">Summary ready</p>
-                <p className="mt-1 text-xs text-clinical-700">
-                  {result.filename} · Patient {truncateId(result.patientId)} · Extraction{' '}
-                  {truncateId(result.extractionId)}
-                </p>
-              </div>
-
-              <DocxSummaryEditor documentBlob={result.docxBlob} fileName={result.filename} />
             </div>
           )}
         </section>
