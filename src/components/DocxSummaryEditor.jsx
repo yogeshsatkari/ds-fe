@@ -14,7 +14,6 @@ export default function DocxSummaryEditor({
   fileName = 'discharge-summary.docx',
   userId,
   patientId,
-  extractionId,
 }) {
   const editorRef = useRef(null)
   const [documentBytes, setDocumentBytes] = useState(null)
@@ -89,7 +88,6 @@ export default function DocxSummaryEditor({
       const { pdfBlob, filename } = await convertDocxToPdf(docxFile, {
         userId,
         patientId,
-        extractionId,
       })
       downloadBlob(pdfBlob, filename)
     } catch (err) {

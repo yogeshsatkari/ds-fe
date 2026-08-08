@@ -6,7 +6,7 @@ import LoadingPanel from '../components/LoadingPanel.jsx'
 import ErrorAlert from '../components/ErrorAlert.jsx'
 
 export default function EditPage() {
-  const { userId, patientId, extractionId } = useParams()
+  const { userId, patientId } = useParams()
   const [docxBlob, setDocxBlob] = useState(null)
   const [filename, setFilename] = useState('discharge-summary.docx')
   const [loading, setLoading] = useState(true)
@@ -26,7 +26,6 @@ export default function EditPage() {
         const { blob, filename: loadedFilename } = await fetchDischargeSummaryDocx(
           userId,
           patientId,
-          extractionId,
         )
         if (cancelled) return
 
@@ -56,7 +55,7 @@ export default function EditPage() {
     return () => {
       cancelled = true
     }
-  }, [userId, patientId, extractionId])
+  }, [userId, patientId])
 
   return (
     <div className="min-h-svh bg-slate-50">
@@ -112,7 +111,6 @@ export default function EditPage() {
             fileName={filename}
             userId={userId}
             patientId={patientId}
-            extractionId={extractionId}
           />
         )}
       </main>

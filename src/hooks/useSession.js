@@ -4,7 +4,6 @@ const STORAGE_KEY = 'ds-session'
 
 const emptyState = {
   patientId: null,
-  extractionId: null,
   filename: null,
 }
 

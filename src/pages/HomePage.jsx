@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { IMAGE_ACCEPT, MAX_IMAGES, USER_ID } from '../config.js'
 import { editSummaryPath, extractToDocx } from '../api/dischargeApi.js'
 import { useSession } from '../hooks/useSession.js'
-import { saveExtractionDocx } from '../utils/extractionStore.js'
 import FileDropzone from '../components/FileDropzone.jsx'
 import LoadingPanel from '../components/LoadingPanel.jsx'
 import ErrorAlert from '../components/ErrorAlert.jsx'
@@ -54,19 +53,10 @@ export default function HomePage() {
 
       update({
         patientId: data.patientId,
-        extractionId: data.extractionId,
         filename: data.filename,
       })
 
-      await saveExtractionDocx(
-        USER_ID,
-        data.patientId,
-        data.extractionId,
-        data.docxBlob,
-        data.filename,
-      )
-
-      navigate(editSummaryPath(USER_ID, data.patientId, data.extractionId), {
+      navigate(editSummaryPath(USER_ID, data.patientId), {
         replace: true,
       })
     } catch (err) {

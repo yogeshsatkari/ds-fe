@@ -21,13 +21,13 @@ function parseFilename(disposition) {
   }
 }
 
-export function editSummaryPath(userId, patientId, extractionId) {
-  return `/edit/${userId}/${patientId}/${extractionId}`
+export function editSummaryPath(userId, patientId) {
+  return `/edit/${userId}/${patientId}`
 }
 
-export async function fetchDischargeSummaryDocx(userId, patientId, extractionId) {
+export async function fetchDischargeSummaryDocx(userId, patientId) {
   const res = await fetch(
-    `${API_BASE_URL}/extractions/${userId}/${patientId}/${extractionId}/discharge-summary.docx`,
+    `${API_BASE_URL}/extractions/${userId}/${patientId}/discharge-summary.docx`,
   )
 
   if (!res.ok) {
@@ -68,19 +68,17 @@ export async function extractToDocx({ userId = USER_ID, files, patientId = null 
   }
 
   const patientIdOut = res.headers.get('X-Patient-Id')
-  const extractionId = res.headers.get('X-Extraction-Id')
   const docxBlob = await res.blob()
   const filename = parseFilename(res.headers.get('Content-Disposition')) ?? 'discharge-summary.docx'
 
-  return { patientId: patientIdOut, extractionId, docxBlob, filename }
+  return { patientId: patientIdOut, docxBlob, filename }
 }
 
-export async function convertDocxToPdf(docxFile, { userId, patientId, extractionId }) {
+export async function convertDocxToPdf(docxFile, { userId, patientId }) {
   const form = new FormData()
   form.append('file', docxFile)
   form.append('user_id', userId)
   form.append('patient_id', patientId)
-  form.append('extraction_id', extractionId)
 
   const res = await fetch(`${API_BASE_URL}/convert/docx-to-pdf`, {
     method: 'POST',
@@ -98,10 +96,8 @@ export async function convertDocxToPdf(docxFile, { userId, patientId, extraction
   return { pdfBlob, filename }
 }
 
-export async function fetchContextJson(userId, patientId, extractionId) {
-  const res = await fetch(
-    `${API_BASE_URL}/extractions/${userId}/${patientId}/${extractionId}/context.json`,
-  )
+export async function fetchContextJson(userId, patientId) {
+  const res = await fetch(`${API_BASE_URL}/extractions/${userId}/${patientId}/context.json`)
   if (!res.ok) {
     throw new Error('Context not found')
   }
