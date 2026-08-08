@@ -4,19 +4,32 @@
   overscroll-behavior: auto;
 }
 
+/* Hide the built-in font-substitution notice (DocxEditor.FontNotice). */
+.docx-summary-editor .docx-font-notice {
+  display: none !important;
+}
+
+/* Hide horizontal and vertical page rulers. */
+.docx-summary-editor .ep-shell__ruler-h,
+.docx-summary-editor .ep-shell__ruler-v,
+.docx-summary-editor .docx-horizontal-ruler,
+.docx-summary-editor .ep-ruler {
+  display: none !important;
+}
+
 @media print {
   body {
     background: white !important;
   }
 
   header,
-  .docx-summary-editor__actions,
   .no-print,
   [data-step-nav] {
     display: none !important;
   }
 
-  main {
+  main,
+  .docx-summary-editor > div.mx-auto {
     max-width: none !important;
     padding: 0 !important;
   }

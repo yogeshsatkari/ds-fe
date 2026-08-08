@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { DocxEditor } from '@docx-editor.dev/react'
 import { convertDocxToPdf } from '../api/dischargeApi.js'
+import EditSummaryHeader from './EditSummaryHeader.jsx'
+import DownloadActions from './DownloadActions.jsx'
 import LoadingPanel from './LoadingPanel.jsx'
 import ErrorAlert from './ErrorAlert.jsx'
 import { downloadBlob } from '../utils/downloadBlob.js'
@@ -110,38 +112,33 @@ export default function DocxSummaryEditor({
     return <ErrorAlert message={loadError} />
   }
 
+  const downloads = (
+    <DownloadActions
+      onDownloadDocx={handleDownloadDocx}
+      onDownloadPdf={handleDownloadPdf}
+      downloading={downloading}
+      convertingPdf={convertingPdf}
+      disabled={!documentBytes}
+    />
+  )
+
   return (
-    <div className="docx-summary-editor space-y-3">
-      <div className="docx-summary-editor__actions flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={handleDownloadDocx}
-          disabled={downloading || convertingPdf || !documentBytes}
-          className="rounded-md bg-clinical-600 px-4 py-2 text-sm font-medium text-white hover:bg-clinical-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {downloading ? 'Preparing…' : 'Download DOCX'}
-        </button>
-        <button
-          type="button"
-          onClick={handleDownloadPdf}
-          disabled={downloading || convertingPdf || !documentBytes}
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {convertingPdf ? 'Converting…' : 'Download PDF'}
-        </button>
-      </div>
+    <div className="docx-summary-editor">
+      <EditSummaryHeader downloads={downloads} />
 
-      <ErrorAlert message={actionError} onDismiss={() => setActionError(null)} />
+      <div className="mx-auto max-w-7xl space-y-3 px-4 py-4 sm:px-6 sm:py-5">
+        <ErrorAlert message={actionError} onDismiss={() => setActionError(null)} />
 
-      <div className="docx-summary-editor__surface docx-editor-print-area rounded-lg border border-slate-200 bg-white">
-        {documentBytes && (
-          <DocxEditor
-            ref={editorRef}
-            document={documentBytes}
-            mode="edit"
-            title={fileName.replace(/\.docx$/i, '')}
-          />
-        )}
+        <div className="docx-summary-editor__surface docx-editor-print-area rounded-lg border border-slate-200 bg-white">
+          {documentBytes && (
+            <DocxEditor
+              ref={editorRef}
+              document={documentBytes}
+              mode="edit"
+              title=""
+            />
+          )}
+        </div>
       </div>
     </div>
   )
