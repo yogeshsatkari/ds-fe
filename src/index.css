@@ -27,3 +27,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Hide docx-editor page rulers (horizontal + vertical). */
+.ep-shell__ruler-h,
+.ep-shell__ruler-v,
+.docx-horizontal-ruler,
+.ep-ruler,
+.ep-ruler--horizontal,
+.ep-ruler--vertical {
+  display: none !important;
+}

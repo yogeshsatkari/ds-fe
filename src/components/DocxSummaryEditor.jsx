@@ -136,6 +136,7 @@ export default function DocxSummaryEditor({
               document={documentBytes}
               mode="edit"
               title=""
+              menu={{ reportIssue: false }}
             />
           )}
         </div>

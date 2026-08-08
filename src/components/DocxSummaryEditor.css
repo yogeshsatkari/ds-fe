@@ -9,14 +9,6 @@
   display: none !important;
 }
 
-/* Hide horizontal and vertical page rulers. */
-.docx-summary-editor .ep-shell__ruler-h,
-.docx-summary-editor .ep-shell__ruler-v,
-.docx-summary-editor .docx-horizontal-ruler,
-.docx-summary-editor .ep-ruler {
-  display: none !important;
-}
-
 @media print {
   body {
     background: white !important;
