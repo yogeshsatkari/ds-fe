@@ -69,7 +69,7 @@ export default function FileDropzone({
       />
       <p className="text-sm font-medium text-slate-700">{label}</p>
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
-      <p className="mt-3 text-xs text-slate-400">Click or drag files here</p>
+      <p className="mt-3 text-xs text-slate-400">Drop files here, or click to browse</p>
     </div>
   )
 }
