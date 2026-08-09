@@ -9,6 +9,16 @@
   display: none !important;
 }
 
+/* Navigation disc: keep left inset tight (ruler gone); push down from the page top. */
+.docx-summary-editor {
+  --docx-nav-inset: 16px;
+}
+
+.docx-summary-editor .docx-nav__toggle {
+  inset-block-start: 32px !important;
+  inset-inline-start: 12px !important;
+}
+
 @media print {
   body {
     background: white !important;
