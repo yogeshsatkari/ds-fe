@@ -11,6 +11,13 @@ import './DocxSummaryEditor.css'
 const DOCX_MIME =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
+const MOBILE_ZOOM_QUERY = '(max-width: 639px)'
+
+function getEditorZoom() {
+  if (typeof window === 'undefined') return 1
+  return window.matchMedia(MOBILE_ZOOM_QUERY).matches ? 0.5 : 1
+}
+
 export default function DocxSummaryEditor({
   documentBlob,
   fileName = 'discharge-summary.docx',
@@ -24,6 +31,15 @@ export default function DocxSummaryEditor({
   const [actionError, setActionError] = useState(null)
   const [downloading, setDownloading] = useState(false)
   const [convertingPdf, setConvertingPdf] = useState(false)
+  const [zoom, setZoom] = useState(getEditorZoom)
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_ZOOM_QUERY)
+    const syncZoom = () => setZoom(media.matches ? 0.5 : 1)
+    syncZoom()
+    media.addEventListener('change', syncZoom)
+    return () => media.removeEventListener('change', syncZoom)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -136,6 +152,7 @@ export default function DocxSummaryEditor({
               document={documentBytes}
               mode="edit"
               title=""
+              zoom={zoom}
               menu={{ reportIssue: false }}
             />
           )}
