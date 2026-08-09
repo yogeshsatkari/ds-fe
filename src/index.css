@@ -28,13 +28,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Hide docx-editor page rulers (horizontal + vertical). */
+/* Hide docx-editor page rulers (horizontal + vertical).
+   Cover both class schemes: current ep-* and older/prod docx-* names. */
 .ep-shell__ruler-h,
 .ep-shell__ruler-v,
+.docx-editor-shell__ruler-h,
+.docx-editor-shell__ruler-v,
 .docx-horizontal-ruler,
+.docx-vertical-ruler,
 .ep-ruler,
 .ep-ruler--horizontal,
-.ep-ruler--vertical {
+.ep-ruler--vertical,
+.docx-editor-ruler,
+.docx-editor-ruler--horizontal,
+.docx-editor-ruler--vertical,
+.docx-ruler-marker,
+.docx-ruler-indent {
   display: none !important;
   visibility: hidden !important;
   width: 0 !important;
