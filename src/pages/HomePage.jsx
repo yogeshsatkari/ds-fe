@@ -130,7 +130,7 @@ export default function HomePage() {
           {loading && (
             <LoadingPanel
               title="Creating your summary…"
-              message="This usually takes a few minutes. Keep this tab open."
+              message="This usually takes a minute. Keep this tab open."
             />
           )}
 
