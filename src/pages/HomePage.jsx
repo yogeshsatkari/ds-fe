@@ -1,66 +1,114 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { IMAGE_ACCEPT, MAX_IMAGES, USER_ID } from "../config.js";
-import { editSummaryPath, extractToDocx } from "../api/dischargeApi.js";
-import { useSession } from "../hooks/useSession.js";
-import FileDropzone from "../components/FileDropzone.jsx";
-import LoadingPanel from "../components/LoadingPanel.jsx";
-import ErrorAlert from "../components/ErrorAlert.jsx";
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { IMAGE_ACCEPT, MAX_IMAGES, USER_ID } from '../config.js'
+import {
+  editSummaryPath,
+  extractToDocx,
+  fetchUserPatients,
+} from '../api/dischargeApi.js'
+import { useSession } from '../hooks/useSession.js'
+import FileDropzone from '../components/FileDropzone.jsx'
+import LoadingPanel from '../components/LoadingPanel.jsx'
+import ErrorAlert from '../components/ErrorAlert.jsx'
+import PastPatientsList from '../components/PastPatientsList.jsx'
 
 export default function HomePage() {
-  const navigate = useNavigate();
-  const { session, update, reset } = useSession();
-  const [imageFiles, setImageFiles] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const navigate = useNavigate()
+  const { session, update, reset } = useSession()
+  const [imageFiles, setImageFiles] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [patients, setPatients] = useState([])
+  const [patientsLoading, setPatientsLoading] = useState(Boolean(USER_ID))
+  const [patientsError, setPatientsError] = useState(null)
 
-  const handleAddImages = (files) => {
-    setImageFiles((prev) => [...prev, ...files].slice(0, MAX_IMAGES));
-    setError(null);
-  };
-
-  const handleRemoveImage = (index) => {
-    setImageFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleStartOver = () => {
-    reset();
-    setImageFiles([]);
-    setError(null);
-    setLoading(false);
-  };
-
-  const handleGenerate = async () => {
-    if (!imageFiles.length) return;
+  useEffect(() => {
     if (!USER_ID) {
-      setError(
-        "Missing user ID. Set VITE_PLACEHOLDER_USER_ID in your .env file.",
-      );
-      return;
+      setPatients([])
+      setPatientsLoading(false)
+      return
     }
 
-    setLoading(true);
-    setError(null);
+    let cancelled = false
+
+    async function loadPatients() {
+      setPatientsLoading(true)
+      setPatientsError(null)
+      try {
+        const list = await fetchUserPatients(USER_ID)
+        if (!cancelled) {
+          setPatients(list)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPatients([])
+          setPatientsError(err instanceof Error ? err.message : 'Failed to load patients')
+        }
+      } finally {
+        if (!cancelled) {
+          setPatientsLoading(false)
+        }
+      }
+    }
+
+    loadPatients()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleAddImages = (files) => {
+    setImageFiles((prev) => [...prev, ...files].slice(0, MAX_IMAGES))
+    setError(null)
+  }
+
+  const handleRemoveImage = (index) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleStartOver = () => {
+    reset()
+    setImageFiles([])
+    setError(null)
+    setLoading(false)
+  }
+
+  const handleGenerate = async () => {
+    if (!imageFiles.length) return
+    if (!USER_ID) {
+      setError('Missing user ID. Set VITE_PLACEHOLDER_USER_ID in your .env file.')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
 
     try {
       const data = await extractToDocx({
         files: imageFiles,
         patientId: session.patientId,
-      });
+      })
 
       update({
         patientId: data.patientId,
         filename: data.filename,
-      });
+      })
 
       navigate(editSummaryPath(USER_ID, data.patientId), {
         replace: true,
-      });
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Generation failed')
+      setLoading(false)
     }
-  };
+  }
+
+  const handleOpenPatient = (patient) => {
+    if (!USER_ID || !patient?.patient_id) return
+    update({ patientId: patient.patient_id })
+    navigate(editSummaryPath(USER_ID, patient.patient_id))
+  }
 
   return (
     <div className="min-h-svh bg-slate-50">
@@ -146,8 +194,17 @@ export default function HomePage() {
               Generate summary
             </button>
           )}
+
+          {!loading && USER_ID && (
+            <PastPatientsList
+              patients={patients}
+              loading={patientsLoading}
+              error={patientsError}
+              onSelect={handleOpenPatient}
+            />
+          )}
         </section>
       </main>
     </div>
-  );
+  )
 }

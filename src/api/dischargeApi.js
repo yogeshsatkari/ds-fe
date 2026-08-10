@@ -96,10 +96,36 @@ export async function convertDocxToPdf(docxFile, { userId, patientId }) {
   return { pdfBlob, filename }
 }
 
+export async function fetchUserPatients(userId = USER_ID) {
+  if (!userId) {
+    throw new Error('Missing user ID')
+  }
+
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/patients`)
+  if (!res.ok) {
+    await parseError(res)
+  }
+
+  const data = await res.json()
+  return data.patients ?? []
+}
+
 export async function fetchContextJson(userId, patientId) {
-  const res = await fetch(`${API_BASE_URL}/extractions/${userId}/${patientId}/context.json`)
+  const res = await fetch(
+    `${API_BASE_URL}/extractions/${userId}/${patientId}/context.json`,
+  )
   if (!res.ok) {
     throw new Error('Context not found')
   }
   return res.json()
+}
+
+export async function fetchContextMd(userId, patientId) {
+  const res = await fetch(
+    `${API_BASE_URL}/extractions/${userId}/${patientId}/context.md`,
+  )
+  if (!res.ok) {
+    throw new Error('Context markdown not found')
+  }
+  return res.text()
 }
