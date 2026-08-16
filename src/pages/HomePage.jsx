@@ -14,7 +14,7 @@ import PastPatientsList from '../components/PastPatientsList.jsx'
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const { session, update, reset } = useSession()
+  const { update } = useSession()
   const [imageFiles, setImageFiles] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -67,13 +67,6 @@ export default function HomePage() {
     setImageFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleStartOver = () => {
-    reset()
-    setImageFiles([])
-    setError(null)
-    setLoading(false)
-  }
-
   const handleGenerate = async () => {
     if (!imageFiles.length) return
     if (!USER_ID) {
@@ -87,7 +80,6 @@ export default function HomePage() {
     try {
       const data = await extractToDocx({
         files: imageFiles,
-        patientId: session.patientId,
       })
 
       update({
@@ -114,26 +106,12 @@ export default function HomePage() {
     <div className="min-h-svh bg-slate-50">
       <header className="shrink-0 border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-4 py-5 sm:px-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-                Discharge Summary
-              </h1>
-              <p className="mt-0.5 text-sm text-slate-500">
-                Upload clinical notes and labs to create a summary
-              </p>
-            </div>
-            {session.patientId && (
-              <button
-                type="button"
-                onClick={handleStartOver}
-                disabled={loading}
-                className="shrink-0 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Start over
-              </button>
-            )}
-          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+            Discharge Summary
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Upload clinical notes and labs to create a summary
+          </p>
         </div>
       </header>
 
