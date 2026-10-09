@@ -48,9 +48,15 @@ export async function fetchDischargeSummaryDocx(userId, patientId) {
   return { blob, filename }
 }
 
-export async function extractToDocx({ userId = USER_ID, files, patientId = null }) {
+export async function extractToDocx({
+  userId = USER_ID,
+  files,
+  patientId = null,
+  dischargeType = 'standard', // other value can be 'custom'
+}) {
   const form = new FormData()
   form.append('user_id', userId)
+  form.append('discharge_type', dischargeType)
   if (patientId) {
     form.append('patient_id', patientId)
   }
@@ -110,6 +116,26 @@ export async function fetchUserPatients(userId = USER_ID) {
   return data.patients ?? []
 }
 
+export async function fetchDischargeSummaryMd(userId, patientId) {
+  const res = await fetch(
+    `${API_BASE_URL}/extractions/${userId}/${patientId}/discharge-summary.md`,
+  )
+  if (!res.ok) {
+    throw new Error('Discharge summary markdown not found')
+  }
+  return res.text()
+}
+
+export async function fetchPatientMetadata(userId, patientId) {
+  const res = await fetch(
+    `${API_BASE_URL}/extractions/${userId}/${patientId}/metadata.json`,
+  )
+  if (!res.ok) {
+    throw new Error('Patient metadata not found')
+  }
+  return res.json()
+}
+
 export async function fetchContextJson(userId, patientId) {
   const res = await fetch(
     `${API_BASE_URL}/extractions/${userId}/${patientId}/context.json`,
@@ -129,3 +155,4 @@ export async function fetchContextMd(userId, patientId) {
   }
   return res.text()
 }
+

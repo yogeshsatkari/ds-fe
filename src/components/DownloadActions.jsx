@@ -13,7 +13,7 @@ function DownloadIcon({ className = 'h-3.5 w-3.5' }) {
 }
 
 const segmentClass =
-  'inline-flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-clinical-50 hover:text-clinical-800 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:py-1.5'
+  'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-clinical-50 hover:text-clinical-800 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:py-1.5'
 
 export default function DownloadActions({
   onDownloadDocx,

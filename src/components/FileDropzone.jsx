@@ -52,7 +52,7 @@ export default function FileDropzone({
           ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-60'
           : dragOver
             ? 'border-clinical-500 bg-clinical-50 cursor-pointer'
-            : 'border-slate-300 bg-white hover:border-clinical-400 hover:bg-slate-50 cursor-pointer',
+            : 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-100 cursor-pointer',
       ].join(' ')}
     >
       <input

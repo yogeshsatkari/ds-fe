@@ -68,9 +68,16 @@ export default function PastPatientsList({ patients, loading = false, error = nu
                 type="button"
                 disabled={!canOpen}
                 onClick={() => onSelect?.(patient)}
-                className="flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <span className="truncate text-sm font-medium text-slate-900">{title}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-medium text-slate-900">{title}</span>
+                  {/* {patient.discharge_type && (
+                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-600">
+                      {patient.discharge_type}
+                    </span>
+                  )} */}
+                </div>
                 {meta && <span className="truncate text-xs text-slate-500">{meta}</span>}
                 {dates && <span className="truncate text-xs text-slate-400">{dates}</span>}
                 {!canOpen && (

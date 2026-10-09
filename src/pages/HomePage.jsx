@@ -144,7 +144,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(index)}
-                    className="shrink-0 text-xs text-slate-400 hover:text-red-600"
+                    className="shrink-0 cursor-pointer rounded px-2 py-0.5 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
                   >
                     Remove
                   </button>
@@ -167,7 +167,7 @@ export default function HomePage() {
               type="button"
               onClick={handleGenerate}
               disabled={!imageFiles.length || loading}
-              className="w-full rounded-md bg-clinical-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-clinical-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              className="w-full cursor-pointer rounded-md bg-clinical-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-clinical-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               Generate summary
             </button>
