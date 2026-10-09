@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 
 export default function FileDropzone({
-  accept,
+  accept = 'image/*,application/pdf,.pdf',
   multiple = false,
   disabled = false,
   label,
