@@ -87,9 +87,7 @@ export default function HomePage() {
         filename: data.filename,
       })
 
-      navigate(editSummaryPath(USER_ID, data.patientId), {
-        replace: true,
-      })
+      navigate(editSummaryPath(USER_ID, data.patientId))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed')
       setLoading(false)
