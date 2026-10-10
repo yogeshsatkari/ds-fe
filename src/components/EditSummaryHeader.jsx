@@ -11,6 +11,17 @@ function NewSummaryLink() {
   )
 }
 
+function DashboardLink() {
+  return (
+    <Link
+      to="/dashboard"
+      className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 sm:py-1.5"
+    >
+      Dashboard
+    </Link>
+  )
+}
+
 export default function EditSummaryHeader({ downloads = null, showNewSummary = true }) {
   return (
     <header className="shrink-0 border-b border-slate-200 bg-white">
@@ -20,12 +31,22 @@ export default function EditSummaryHeader({ downloads = null, showNewSummary = t
             <h1 className="min-w-0 truncate text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
               Edit discharge summary
             </h1>
-            {showNewSummary && <div className="sm:hidden">{<NewSummaryLink />}</div>}
+            {showNewSummary && (
+              <div className="flex items-center gap-1.5 sm:hidden">
+                <DashboardLink />
+                <NewSummaryLink />
+              </div>
+            )}
           </div>
 
           <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
             {downloads}
-            {showNewSummary && <div className="hidden sm:block">{<NewSummaryLink />}</div>}
+            {showNewSummary && (
+              <div className="hidden sm:flex sm:items-center sm:gap-1.5">
+                <DashboardLink />
+                <NewSummaryLink />
+              </div>
+            )}
           </div>
         </div>
       </div>

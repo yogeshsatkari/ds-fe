@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { FILE_ACCEPT, MAX_FILES, MAX_TOTAL_SIZE_MB, USER_ID } from '../config.js'
 import {
   editSummaryPath,
@@ -190,13 +190,31 @@ export default function HomePage() {
   return (
     <div className="min-h-svh bg-slate-50">
       <header className="shrink-0 border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-3xl px-4 py-5 sm:px-6">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-            Discharge Summary
-          </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Upload clinical notes, labs, and documents to create a summary
-          </p>
+        <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+                Discharge Summary
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Upload clinical notes, labs, and documents to create a summary
+              </p>
+            </div>
+            <Link
+              to="/dashboard"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-2xs"
+            >
+              <svg className="h-4 w-4 text-clinical-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              <span>Analytics & Patients</span>
+            </Link>
+          </div>
         </div>
       </header>
 

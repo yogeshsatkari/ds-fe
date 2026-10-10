@@ -146,13 +146,27 @@ export async function fetchContextJson(userId, patientId) {
   return res.json()
 }
 
-export async function fetchContextMd(userId, patientId) {
-  const res = await fetch(
-    `${API_BASE_URL}/extractions/${userId}/${patientId}/context.md`,
-  )
-  if (!res.ok) {
-    throw new Error('Context markdown not found')
+export function getActiveUserId() {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('user_id')
+    if (stored) return stored.trim()
   }
-  return res.text()
+  return USER_ID
 }
+
+export async function fetchPatientMetrics(userId, patientId) {
+  if (!userId || !patientId) return null
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/extractions/${userId}/${patientId}/metrics.json`,
+    )
+    if (!res.ok) {
+      return null
+    }
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 
