@@ -4,3 +4,5 @@ export const USER_ID = import.meta.env.VITE_PLACEHOLDER_USER_ID ?? ''
 export const FILE_ACCEPT = 'image/*,application/pdf,.pdf'
 export const MAX_FILES = 30
 export const MAX_TOTAL_SIZE_MB = 50
+
+export const USD_TO_INR_RATE = Number(import.meta.env.VITE_USD_TO_INR_RATE ?? 98)

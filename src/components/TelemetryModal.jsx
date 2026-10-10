@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { editSummaryPath } from '../api/dischargeApi.js'
+import { USD_TO_INR_RATE } from '../config.js'
 
 function formatTokens(num) {
   if (num == null) return '—'
@@ -355,7 +356,7 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                 </div>
                 <p>
                   Costs are calculated at standard Gemini API pricing: <b>$0.30 per 1M input tokens</b> and{' '}
-                  <b>$2.50 per 1M output & reasoning tokens</b> (including Thinking budget), pegged at approximately ₹86.50 INR / USD.
+                  <b>$2.50 per 1M output & reasoning tokens</b> (including Thinking budget), pegged at approximately ₹{USD_TO_INR_RATE.toFixed(2)} INR / USD.
                 </p>
               </div>
             </>
