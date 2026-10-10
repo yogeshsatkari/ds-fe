@@ -649,8 +649,8 @@ export default function HomePage() {
           {/* Loading Extraction Panel */}
           {loading && (
             <LoadingPanel
-              title="Creating your summary…"
-              message="This usually takes a minute. Keep this tab open."
+              title="Creating your discharge…"
+              message="This can take upto 10 minutes. Please keep this tab open."
             />
           )}
 

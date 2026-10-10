@@ -216,7 +216,7 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-100 pt-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs border-t border-slate-100 pt-3">
                       <div>
                         <span className="text-slate-400">Duration:</span>
                         <p className="font-medium text-slate-800">
@@ -237,6 +237,12 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                         <span className="text-slate-400">Reasoning Tokens:</span>
                         <p className="font-medium text-purple-700">{formatTokens(stage1.thought_tokens)}</p>
                       </div>
+                      <div>
+                        <span className="text-slate-400">Visible Tokens:</span>
+                        <p className="font-medium text-emerald-700">
+                          {formatTokens(stage1.visible_tokens ?? stage1.output_tokens)}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -256,7 +262,7 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-100 pt-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs border-t border-slate-100 pt-3">
                       <div>
                         <span className="text-slate-400">Duration:</span>
                         <p className="font-medium text-slate-800">
@@ -276,6 +282,12 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                       <div>
                         <span className="text-slate-400">Reasoning Tokens:</span>
                         <p className="font-medium text-purple-700">{formatTokens(stage2.thought_tokens)}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Visible Tokens:</span>
+                        <p className="font-medium text-emerald-700">
+                          {formatTokens(stage2.visible_tokens ?? stage2.output_tokens)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -297,6 +309,7 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                           <th className="px-3.5 py-2.5">Duration</th>
                           <th className="px-3.5 py-2.5">Input Tokens</th>
                           <th className="px-3.5 py-2.5">Reasoning Tokens</th>
+                          <th className="px-3.5 py-2.5">Visible Tokens</th>
                           <th className="px-3.5 py-2.5 text-right">Cost</th>
                         </tr>
                       </thead>
@@ -317,6 +330,9 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                             </td>
                             <td className="px-3.5 py-2 text-purple-700 font-mono">
                               {formatTokens(page.thought_tokens)}
+                            </td>
+                            <td className="px-3.5 py-2 text-emerald-700 font-mono">
+                              {formatTokens(page.visible_tokens ?? page.output_tokens)}
                             </td>
                             <td className="px-3.5 py-2 text-right font-semibold text-clinical-700 font-mono">
                               {formatCostInr(page.cost_inr)}
