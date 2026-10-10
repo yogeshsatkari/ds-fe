@@ -492,11 +492,10 @@ export default function HomePage() {
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
-              className={`relative rounded-2xl border-2 transition-all duration-150 ${
-                isDragActive
+              className={`relative rounded-2xl border-2 transition-all duration-150 ${isDragActive
                   ? 'border-clinical-500 bg-clinical-50/50 shadow-md ring-4 ring-clinical-500/10'
                   : 'border-slate-200 bg-white shadow-2xs hover:border-slate-300'
-              }`}
+                }`}
             >
               {/* Dragging Overlay */}
               {isDragActive && (
@@ -650,7 +649,7 @@ export default function HomePage() {
           {loading && (
             <LoadingPanel
               title="Creating your discharge…"
-              message="This can take upto 10 minutes. Please keep this tab open."
+              message="This can take upto 4 minutes. Please keep this tab open."
             />
           )}
 
@@ -660,7 +659,7 @@ export default function HomePage() {
           {/* Generate Action Button */}
           {!loading && files.length > 0 && (
             <div className="flex justify-end pt-1">
-          
+
 
               <button
                 type="button"
