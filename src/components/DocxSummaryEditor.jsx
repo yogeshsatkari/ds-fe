@@ -5,6 +5,7 @@ import EditSummaryHeader from './EditSummaryHeader.jsx'
 import DownloadActions from './DownloadActions.jsx'
 import LoadingPanel from './LoadingPanel.jsx'
 import ErrorAlert from './ErrorAlert.jsx'
+import { useDocumentPlaceholderHighlight } from '../hooks/useDocumentPlaceholderHighlight.js'
 import { downloadBlob } from '../utils/downloadBlob.js'
 import './DocxSummaryEditor.css'
 
@@ -25,6 +26,7 @@ export default function DocxSummaryEditor({
   patientId,
 }) {
   const editorRef = useRef(null)
+  const surfaceRef = useRef(null)
   const [documentBytes, setDocumentBytes] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -32,6 +34,9 @@ export default function DocxSummaryEditor({
   const [downloading, setDownloading] = useState(false)
   const [convertingPdf, setConvertingPdf] = useState(false)
   const [zoom, setZoom] = useState(getEditorZoom)
+
+  // Highlights all [verify], [to be filled], etc. directly in the document text
+  useDocumentPlaceholderHighlight(surfaceRef, Boolean(documentBytes && !loading))
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_ZOOM_QUERY)
@@ -145,7 +150,10 @@ export default function DocxSummaryEditor({
       <div className="mx-auto max-w-7xl space-y-3 px-4 py-4 sm:px-6 sm:py-5">
         <ErrorAlert message={actionError} onDismiss={() => setActionError(null)} />
 
-        <div className="docx-summary-editor__surface docx-editor-print-area rounded-lg border border-slate-200 bg-white">
+        <div
+          ref={surfaceRef}
+          className="docx-summary-editor__surface docx-editor-print-area rounded-lg border border-slate-200 bg-white"
+        >
           {documentBytes && (
             <DocxEditor
               ref={editorRef}
