@@ -636,6 +636,8 @@ export default function DashboardPage() {
                             {patient.has_summary !== false && (
                               <Link
                                 to={editSummaryPath(userId, patient.patient_id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="inline-flex cursor-pointer items-center rounded-md bg-clinical-50 border border-clinical-200 px-2.5 py-1 text-xs font-medium text-clinical-700 hover:bg-clinical-100 transition-colors"
                                 title="Open in Word editor"
                               >

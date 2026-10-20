@@ -375,6 +375,8 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
           {patient.has_summary !== false && (
             <Link
               to={editSummaryPath(userId, patient.patient_id)}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-clinical-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-clinical-700 transition-colors shadow-xs"
             >
               <span>Open Document Editor</span>
