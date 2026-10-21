@@ -429,15 +429,157 @@ export default function HomePage() {
     }
   }, [])
 
-  const onTemplateDrop = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsTemplateDragActive(false)
-    if (e.dataTransfer?.files?.length) {
-      setTemplateFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)])
-      setError(null)
+  const getTemplateCategory = useCallback((file) => {
+    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
+    if (
+      ext === '.docx' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      return 'docx'
+    }
+    if (ext === '.pdf' || file.type === 'application/pdf') {
+      return 'pdf'
+    }
+    if (
+      ['.png', '.jpg', '.jpeg', '.webp'].includes(ext) ||
+      file.type?.startsWith('image/')
+    ) {
+      return 'image'
+    }
+    if (ext === '.doc') {
+      return 'doc_legacy'
+    }
+    return 'unsupported'
+  }, [])
+
+  const handleOpenTemplatePicker = useCallback((e) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation()
+    }
+    if (templateInputRef.current) {
+      templateInputRef.current.value = ''
+      templateInputRef.current.click()
     }
   }, [])
+
+  const handleAddTemplateFiles = useCallback(
+    (incomingFiles) => {
+      if (!incomingFiles || incomingFiles.length === 0) return
+      setError(null)
+
+      const categorized = incomingFiles.map((f) => ({
+        file: f,
+        cat: getTemplateCategory(f),
+      }))
+
+      // Check for legacy doc
+      if (categorized.some((c) => c.cat === 'doc_legacy')) {
+        setError(
+          'Legacy Word format (.doc) is not supported. Please save your template as Word (.docx) or PDF (.pdf) and upload again.',
+        )
+        if (templateInputRef.current) templateInputRef.current.value = ''
+        return
+      }
+
+      // Check for unsupported files
+      const unsupported = categorized.filter((c) => c.cat === 'unsupported')
+      if (unsupported.length > 0) {
+        const names = unsupported.map((c) => c.file.name).join(', ')
+        setError(
+          `Unsupported template format for: ${names}. Allowed formats: Word (.docx), PDF (.pdf), or Image files (.jpg, .png, .webp).`,
+        )
+        if (templateInputRef.current) templateInputRef.current.value = ''
+        return
+      }
+
+      // Check file size limits
+      for (const item of categorized) {
+        if (item.file.size > 30 * 1024 * 1024) {
+          setError(`Template file "${item.file.name}" exceeds the 30 MB limit.`)
+          if (templateInputRef.current) templateInputRef.current.value = ''
+          return
+        }
+      }
+
+      // Check categories in the incoming batch
+      const incomingCategories = Array.from(new Set(categorized.map((c) => c.cat)))
+
+      // Cannot mix different categories in the same upload
+      if (incomingCategories.length > 1) {
+        setError(
+          'Incompatible template files. Please upload either a single Word document (.docx), a single PDF (.pdf), or image scans (.jpg, .png) — they cannot be mixed.',
+        )
+        if (templateInputRef.current) templateInputRef.current.value = ''
+        return
+      }
+
+      const category = incomingCategories[0]
+
+      if (category === 'docx') {
+        if (incomingFiles.length > 1) {
+          setError('Only a single Word template (.docx) is supported. Please upload one document.')
+          if (templateInputRef.current) templateInputRef.current.value = ''
+          return
+        }
+        // Exactly one docx file: replace current template
+        setTemplateFiles([categorized[0].file])
+      } else if (category === 'pdf') {
+        if (incomingFiles.length > 1) {
+          setError('Only a single PDF template (.pdf) is supported. Please upload one document.')
+          if (templateInputRef.current) templateInputRef.current.value = ''
+          return
+        }
+        // Exactly one pdf file: replace current template
+        setTemplateFiles([categorized[0].file])
+      } else if (category === 'image') {
+        // All incoming are images
+        setTemplateFiles((prev) => {
+          // If previous template was a docx or pdf, replace it with the images
+          const prevCats = new Set(prev.map((f) => getTemplateCategory(f)))
+          if (prevCats.has('docx') || prevCats.has('pdf')) {
+            return incomingFiles
+          }
+          // If previous was already images, append new ones without duplicates
+          const existingKeys = new Set(prev.map((f) => `${f.name}-${f.size}`))
+          const fresh = incomingFiles.filter((f) => !existingKeys.has(`${f.name}-${f.size}`))
+          return [...prev, ...fresh]
+        })
+      }
+
+      if (templateInputRef.current) {
+        templateInputRef.current.value = ''
+      }
+    },
+    [getTemplateCategory],
+  )
+
+  const handleRemoveTemplateFile = useCallback((index) => {
+    setTemplateFiles((prev) => prev.filter((_, idx) => idx !== index))
+    if (templateInputRef.current) {
+      templateInputRef.current.value = ''
+    }
+    setError(null)
+  }, [])
+
+  const handleClearTemplateFiles = useCallback(() => {
+    setTemplateFiles([])
+    if (templateInputRef.current) {
+      templateInputRef.current.value = ''
+    }
+    setError(null)
+  }, [])
+
+  const onTemplateDrop = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsTemplateDragActive(false)
+      if (e.dataTransfer?.files?.length) {
+        handleAddTemplateFiles(Array.from(e.dataTransfer.files))
+      }
+    },
+    [handleAddTemplateFiles],
+  )
 
   const isCustomMissingTemplate = templateMode === 'custom' && templateFiles.length === 0
   const canGenerate = files.length > 0 && !loading && !optimizing && !isCustomMissingTemplate
@@ -517,6 +659,9 @@ export default function HomePage() {
         multiple
         disabled={loading || optimizing || files.length >= MAX_FILES}
         className="hidden"
+        onClick={(e) => {
+          e.target.value = ''
+        }}
         onChange={(e) => {
           if (e.target.files?.length) {
             handleAddFiles(Array.from(e.target.files))
@@ -533,9 +678,12 @@ export default function HomePage() {
         multiple
         disabled={loading || optimizing}
         className="hidden"
+        onClick={(e) => {
+          e.target.value = ''
+        }}
         onChange={(e) => {
           if (e.target.files?.length) {
-            setTemplateFiles((prev) => [...prev, ...Array.from(e.target.files)])
+            handleAddTemplateFiles(Array.from(e.target.files))
             e.target.value = ''
           }
         }}
@@ -661,18 +809,8 @@ export default function HomePage() {
                           <span className="font-medium text-slate-700">
                             {files.length} page{files.length === 1 ? '' : 's'} in sequence
                           </span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono text-slate-400">
-                              {formatBytes(totalBytes)} of {MAX_TOTAL_SIZE_MB} MB
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleClearAll}
-                              disabled={optimizing}
-                              className="cursor-pointer text-xs font-medium text-slate-400 hover:text-red-600 transition-colors"
-                            >
-                              Clear
-                            </button>
+                          <div className="flex items-center gap-2 sm:gap-2.5 font-mono text-[11px] sm:text-xs text-slate-400">
+                            <span>{formatBytes(totalBytes)} of {MAX_TOTAL_SIZE_MB} MB</span>
                           </div>
                         </div>
 
@@ -709,14 +847,19 @@ export default function HomePage() {
                       </div>
 
                       {/* Bottom Helper Bar */}
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-[11px] text-slate-400">
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-[11px] text-slate-400">
                         <span className="flex items-center gap-1">
                           <span>💡</span>
                           <span>Click to preview</span>
                         </span>
-                        <span className="font-mono">
-                          {MAX_FILES - files.length} slots left
-                        </span>
+                        <button
+                          type="button"
+                          onClick={handleClearAll}
+                          disabled={optimizing}
+                          className="cursor-pointer text-xs text-slate-400 hover:text-red-600 transition-colors"
+                        >
+                          Clear
+                        </button>
                       </div>
                     </div>
                   )}
@@ -803,11 +946,11 @@ export default function HomePage() {
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => templateInputRef.current?.click()}
+                        onClick={handleOpenTemplatePicker}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault()
-                            templateInputRef.current?.click()
+                            handleOpenTemplatePicker(e)
                           }
                         }}
                         className="flex cursor-pointer flex-col items-center justify-center p-8 text-center sm:p-10 flex-1"
@@ -833,10 +976,7 @@ export default function HomePage() {
 
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            templateInputRef.current?.click()
-                          }}
+                          onClick={handleOpenTemplatePicker}
                           className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-clinical-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-clinical-700 active:scale-98"
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -849,15 +989,6 @@ export default function HomePage() {
                       /* Custom Mode: Staged Template Files */
                       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                         <div>
-                          <div className="mb-3 flex items-center justify-between text-xs border-b border-slate-100 pb-2.5">
-                            <span className="font-semibold text-slate-800">
-                              ✓ {templateFiles.length} Template Document{templateFiles.length === 1 ? '' : 's'}
-                            </span>
-                            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                              Ready for synthesis
-                            </span>
-                          </div>
-
                           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                             {templateFiles.map((tf, i) => (
                               <div
@@ -880,7 +1011,7 @@ export default function HomePage() {
 
                                 <button
                                   type="button"
-                                  onClick={() => setTemplateFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                                  onClick={() => handleRemoveTemplateFile(i)}
                                   className="cursor-pointer rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                                   title="Remove template file"
                                 >
@@ -897,17 +1028,25 @@ export default function HomePage() {
                         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
                           <button
                             type="button"
-                            onClick={() => templateInputRef.current?.click()}
+                            onClick={handleOpenTemplatePicker}
                             className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-clinical-700 hover:text-clinical-800 transition-colors"
                           >
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                              {templateFiles[0] && ['docx', 'pdf'].includes(getTemplateCategory(templateFiles[0])) ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                              )}
                             </svg>
-                            <span>Add another page or file</span>
+                            <span>
+                              {templateFiles[0] && ['docx', 'pdf'].includes(getTemplateCategory(templateFiles[0]))
+                                ? 'Replace template'
+                                : 'Add another page (image)'}
+                            </span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => setTemplateFiles([])}
+                            onClick={handleClearTemplateFiles}
                             className="cursor-pointer text-xs text-slate-400 hover:text-red-600 transition-colors"
                           >
                             Clear
