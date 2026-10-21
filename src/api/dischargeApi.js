@@ -51,17 +51,26 @@ export async function fetchDischargeSummaryDocx(userId, patientId) {
 export async function extractToDocx({
   userId = USER_ID,
   files,
+  templateFiles = [],
   patientId = null,
-  dischargeType = 'standard', // other value can be 'custom'
+  dischargeType = null,
 }) {
   const form = new FormData()
   form.append('user_id', userId)
-  form.append('discharge_type', dischargeType)
   if (patientId) {
     form.append('patient_id', patientId)
   }
   for (const file of files) {
     form.append('files', file)
+  }
+
+  if (templateFiles && templateFiles.length > 0) {
+    form.append('discharge_type', 'custom')
+    for (const tFile of templateFiles) {
+      form.append('template_files', tFile)
+    }
+  } else {
+    form.append('discharge_type', dischargeType || 'standard')
   }
 
   const res = await fetch(`${API_BASE_URL}/extract`, {
@@ -136,14 +145,17 @@ export async function fetchPatientMetadata(userId, patientId) {
   return res.json()
 }
 
-export async function fetchContextJson(userId, patientId) {
-  const res = await fetch(
-    `${API_BASE_URL}/extractions/${userId}/${patientId}/context.json`,
-  )
-  if (!res.ok) {
-    throw new Error('Context not found')
+export async function fetchTemplateMd(userId, patientId) {
+  if (!userId || !patientId) return null
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/extractions/${userId}/${patientId}/template.md`,
+    )
+    if (!res.ok) return null
+    return await res.text()
+  } catch {
+    return null
   }
-  return res.json()
 }
 
 export function getActiveUserId() {

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FILE_ACCEPT, MAX_FILES, MAX_TOTAL_SIZE_MB, USER_ID } from '../config.js'
+import {
+  FILE_ACCEPT,
+  MAX_FILES,
+  MAX_TOTAL_SIZE_MB,
+  TEMPLATE_FILE_ACCEPT,
+  USER_ID,
+} from '../config.js'
 import {
   editSummaryPath,
   extractToDocx,
@@ -248,6 +254,12 @@ export default function HomePage() {
   const [isDragActive, setIsDragActive] = useState(false)
   const fileInputRef = useRef(null)
 
+  // Template state: 'custom' by default (template required), or 'standard'
+  const [templateMode, setTemplateMode] = useState('custom')
+  const [templateFiles, setTemplateFiles] = useState([])
+  const [isTemplateDragActive, setIsTemplateDragActive] = useState(false)
+  const templateInputRef = useRef(null)
+
   // Lightbox preview index (null when modal is closed)
   const [activePreviewIndex, setActivePreviewIndex] = useState(null)
 
@@ -397,8 +409,47 @@ export default function HomePage() {
     [files.length, handleAddFiles],
   )
 
+  const onTemplateDragEnter = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsTemplateDragActive(true)
+  }, [])
+
+  const onTemplateDragOver = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsTemplateDragActive(true)
+  }, [])
+
+  const onTemplateDragLeave = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsTemplateDragActive(false)
+    }
+  }, [])
+
+  const onTemplateDrop = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsTemplateDragActive(false)
+    if (e.dataTransfer?.files?.length) {
+      setTemplateFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)])
+      setError(null)
+    }
+  }, [])
+
+  const isCustomMissingTemplate = templateMode === 'custom' && templateFiles.length === 0
+  const canGenerate = files.length > 0 && !loading && !optimizing && !isCustomMissingTemplate
+
   const handleGenerate = async () => {
     if (!files.length) return
+    if (isCustomMissingTemplate) {
+      setError(
+        'A custom template file (.docx, .pdf, or image) is required when Custom Template mode is selected. Please attach a template file or switch to Standard format.',
+      )
+      return
+    }
     if (!USER_ID) {
       setError('Missing user ID. Set VITE_PLACEHOLDER_USER_ID in your .env file.')
       return
@@ -408,7 +459,11 @@ export default function HomePage() {
     setError(null)
 
     try {
-      const data = await extractToDocx({ files })
+      const data = await extractToDocx({
+        files,
+        templateFiles: templateMode === 'custom' ? templateFiles : [],
+        dischargeType: templateMode,
+      })
       update({
         patientId: data.patientId,
         filename: data.filename,
@@ -470,178 +525,452 @@ export default function HomePage() {
         }}
       />
 
+      {/* Hidden File Input for Custom Template */}
+      <input
+        ref={templateInputRef}
+        type="file"
+        accept={TEMPLATE_FILE_ACCEPT}
+        multiple
+        disabled={loading || optimizing}
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.length) {
+            setTemplateFiles((prev) => [...prev, ...Array.from(e.target.files)])
+            e.target.value = ''
+          }
+        }}
+      />
+
       <header className="shrink-0 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-slate-900">
               Discharge Summary
             </h1>
             <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
-              Upload clinical notes, labs, and documents to create a summary
+              Upload clinical notes and choose your discharge format
             </p>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <section className="space-y-4">
-          {/* Main Upload / Document Staging Area */}
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <section className="space-y-6">
+          {/* Side-by-Side: Patient Records & Discharge Template */}
           {!loading && (
-            <div
-              onDragEnter={onDragEnter}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onDrop={onDrop}
-              className={`relative rounded-2xl border-2 transition-all duration-150 ${isDragActive
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              {/* 1. Patient Clinical Records Box */}
+              <div
+                onDragEnter={onDragEnter}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                className={`relative flex flex-col justify-between rounded-2xl border-2 transition-all duration-150 min-h-[420px] lg:col-span-7 ${isDragActive
                   ? 'border-clinical-500 bg-clinical-50/50 shadow-md ring-4 ring-clinical-500/10'
                   : 'border-slate-200 bg-white shadow-2xs hover:border-slate-300'
-                }`}
-            >
-              {/* Dragging Overlay */}
-              {isDragActive && (
-                <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-clinical-50/90 backdrop-blur-xs">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-clinical-100 text-clinical-600 shadow-sm animate-bounce">
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
+                  }`}
+              >
+                {/* Dragging Overlay */}
+                {isDragActive && (
+                  <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-clinical-50/90 backdrop-blur-xs">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-clinical-100 text-clinical-600 shadow-sm animate-bounce">
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-clinical-800">
+                      Drop documents to append in sequence
+                    </p>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-clinical-800">
-                    Drop documents to append in sequence
-                  </p>
+                )}
+
+                {/* Box Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-clinical-100 text-xs font-bold text-clinical-700">
+                      1
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 leading-none">
+                        Patient Records
+                      </h3>
+                      <span className="text-[11px] text-slate-400">Notes, charts, labs & records</span>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                    {files.length} / {MAX_FILES} files
+                  </span>
                 </div>
-              )}
 
-              {files.length === 0 ? (
-                /* Empty Dropzone State */
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => fileInputRef.current?.click()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      fileInputRef.current?.click()
-                    }
-                  }}
-                  className="flex cursor-pointer flex-col items-center justify-center p-8 text-center sm:p-12"
-                >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-clinical-50 text-clinical-600 shadow-2xs transition-transform group-hover:scale-105">
-                    <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                  </div>
+                {/* Box Body */}
+                <div className="flex-1 flex flex-col justify-center">
+                  {files.length === 0 ? (
+                    /* Empty Dropzone State */
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => fileInputRef.current?.click()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          fileInputRef.current?.click()
+                        }
+                      }}
+                      className="flex cursor-pointer flex-col items-center justify-center p-8 text-center sm:p-10 flex-1"
+                    >
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-clinical-50 text-clinical-600 shadow-2xs transition-transform hover:scale-105">
+                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </div>
 
-                  <h3 className="mt-4 text-base font-semibold text-slate-800">
-                    {optimizing ? 'Optimizing documents…' : 'Drag & drop patient records here'}
-                  </h3>
-                  <p className="mt-1 max-w-sm text-xs text-slate-500 sm:text-sm">
-                    Upload handwritten notes, clinical charts, labs, or hospital discharge papers
-                  </p>
+                      <h4 className="mt-4 text-base font-semibold text-slate-800">
+                        {optimizing ? 'Optimizing documents…' : 'Drag & drop patient records here'}
+                      </h4>
+                      <p className="mt-1 max-w-xs text-xs text-slate-500">
+                        Upload notes, charts, labs, or hospital papers to summarize
+                      </p>
 
-                  <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">JPG</span>
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PNG</span>
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">TIFF</span>
-                    <span>· Up to {MAX_FILES} files ({MAX_TOTAL_SIZE_MB} MB)</span>
-                  </div>
+                      <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">JPG</span>
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PNG</span>
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">TIFF</span>
+                      </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      fileInputRef.current?.click()
-                    }}
-                    disabled={optimizing}
-                    className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-clinical-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-clinical-700 active:scale-98"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span>Browse Files</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          fileInputRef.current?.click()
+                        }}
+                        disabled={optimizing}
+                        className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-clinical-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-clinical-700 active:scale-98"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Browse Files</span>
+                      </button>
+                    </div>
+                  ) : (
+                    /* Staged Files Grid */
+                    <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="mb-3 flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2.5">
+                          <span className="font-medium text-slate-700">
+                            {files.length} page{files.length === 1 ? '' : 's'} in sequence
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-slate-400">
+                              {formatBytes(totalBytes)} of {MAX_TOTAL_SIZE_MB} MB
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleClearAll}
+                              disabled={optimizing}
+                              className="cursor-pointer text-xs font-medium text-slate-400 hover:text-red-600 transition-colors"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2.5 max-h-72 overflow-y-auto pr-1">
+                          {files.map((file, index) => (
+                            <DocumentSquareTile
+                              key={`${file.name}-${index}`}
+                              file={file}
+                              index={index}
+                              onRemove={handleRemoveFile}
+                              onPreviewClick={(idx) => setActivePreviewIndex(idx)}
+                            />
+                          ))}
+
+                          {files.length < MAX_FILES ? (
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={optimizing}
+                              className="group flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 text-slate-500 transition-all hover:border-clinical-500 hover:bg-clinical-50/50 hover:text-clinical-700 active:scale-95"
+                              title="Add more pages"
+                            >
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white transition-colors group-hover:border-clinical-300 group-hover:text-clinical-600 shadow-2xs">
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                </svg>
+                              </div>
+                              <span className="mt-1.5 text-[11px] font-semibold">
+                                {optimizing ? 'Optimizing…' : 'Add Page'}
+                              </span>
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* Bottom Helper Bar */}
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-[11px] text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <span>💡</span>
+                          <span>Click to preview</span>
+                        </span>
+                        <span className="font-mono">
+                          {MAX_FILES - files.length} slots left
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                /* Staged Files Grid (Claude / ChatGPT style) */
-                <div className="p-4 sm:p-5">
-                  {/* Top Bar with count and capacity */}
-                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xs text-slate-400">
-                        ({formatBytes(totalBytes)} of {MAX_TOTAL_SIZE_MB} MB)
+              </div>
+
+              {/* 2. Discharge Template Box */}
+              <div
+                onDragEnter={templateMode === 'custom' ? onTemplateDragEnter : undefined}
+                onDragOver={templateMode === 'custom' ? onTemplateDragOver : undefined}
+                onDragLeave={templateMode === 'custom' ? onTemplateDragLeave : undefined}
+                onDrop={templateMode === 'custom' ? onTemplateDrop : undefined}
+                className={`relative flex flex-col justify-between rounded-2xl border-2 transition-all duration-150 min-h-[420px] lg:col-span-5 ${isTemplateDragActive
+                  ? 'border-clinical-500 bg-clinical-50/50 shadow-md ring-4 ring-clinical-500/10'
+                  : 'border-slate-200 bg-white shadow-2xs hover:border-slate-300'
+                  }`}
+              >
+                {/* Dragging Overlay */}
+                {isTemplateDragActive && (
+                  <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-clinical-50/90 backdrop-blur-xs">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-clinical-100 text-clinical-600 shadow-sm animate-bounce">
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-clinical-800">
+                      Drop template document here
+                    </p>
+                  </div>
+                )}
+
+                {/* Box Header with Custom / Standard Switcher */}
+                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-clinical-100 text-xs font-bold text-clinical-700">
+                      2
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 leading-none">
+                        Discharge Template
+                      </h3>
+                      <span className="text-[11px] text-slate-400">
+                        {templateMode === 'custom' ? 'Custom format' : ' Preconfigured clinical discharge protocol'}
                       </span>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={handleClearAll}
-                        disabled={optimizing}
-                        className="cursor-pointer text-xs font-medium text-slate-400 transition-colors hover:text-red-600"
-                      >
-                        Clear All
-                      </button>
-                    </div>
                   </div>
 
-                  {/* 1-Inch Square Thumbnails Grid */}
-                  <div className="flex flex-wrap gap-2.5 sm:gap-3.5">
-                    {files.map((file, index) => (
-                      <DocumentSquareTile
-                        key={`${file.name}-${index}`}
-                        file={file}
-                        index={index}
-                        onRemove={handleRemoveFile}
-                        onPreviewClick={(idx) => setActivePreviewIndex(idx)}
-                      />
-                    ))}
-
-                    {/* Integrated "+ Add Page" Tile */}
-                    {files.length < MAX_FILES ? (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={optimizing}
-                        className="group flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 text-slate-500 transition-all hover:border-clinical-500 hover:bg-clinical-50/50 hover:text-clinical-700 active:scale-95"
-                        title="Add more pages"
-                      >
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white transition-colors group-hover:border-clinical-300 group-hover:text-clinical-600 shadow-2xs">
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                          </svg>
-                        </div>
-                        <span className="mt-1.5 text-[11px] font-semibold">
-                          {optimizing ? 'Optimizing…' : 'Add Page'}
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setError(`Maximum document limit reached (${MAX_FILES} files). Please remove some documents to add new ones.`)
-                        }}
-                        className="group flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-amber-300 bg-amber-50/40 text-amber-700 p-2 text-center transition-all hover:bg-amber-50 active:scale-95"
-                        title={`Limit reached (${MAX_FILES} files)`}
-                      >
-                        <span className="text-xs font-bold text-amber-600">Max Limit</span>
-                        <span className="mt-0.5 text-[10px] text-amber-700 font-medium">{MAX_FILES} / {MAX_FILES}</span>
-                        <span className="mt-1 text-[9px] text-amber-600/80">Full</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Bottom Helper Bar */}
-                  <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-[11px] text-slate-400">
-                    <p className="flex items-center gap-1.5">
-                      <span>💡</span>
-                      <span>Click any page to preview. Read in order (#1 → #{files.length}).</span>
-                    </p>
-                    <span className="font-mono text-slate-400">
-                      {MAX_FILES - files.length} slots left
-                    </span>
+                  {/* Mode Switcher: Custom (Default) vs Standard */}
+                  <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100/90 p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTemplateMode('custom')
+                        setError(null)
+                      }}
+                      className={`cursor-pointer rounded-md px-3 py-1 font-medium transition-all ${templateMode === 'custom'
+                        ? 'bg-white text-clinical-700 shadow-2xs font-semibold'
+                        : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                      Custom
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTemplateMode('standard')
+                        setError(null)
+                      }}
+                      className={`cursor-pointer rounded-md px-3 py-1 font-medium transition-all ${templateMode === 'standard'
+                        ? 'bg-white text-clinical-700 shadow-2xs font-semibold'
+                        : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                      Standard
+                    </button>
                   </div>
                 </div>
-              )}
+
+                {/* Box Body */}
+                <div className="flex-1 flex flex-col justify-center">
+                  {templateMode === 'custom' ? (
+                    templateFiles.length === 0 ? (
+                      /* Custom Mode: Empty Dropzone (Required) */
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => templateInputRef.current?.click()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            templateInputRef.current?.click()
+                          }
+                        }}
+                        className="flex cursor-pointer flex-col items-center justify-center p-8 text-center sm:p-10 flex-1"
+                      >
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-clinical-50 text-clinical-600 shadow-2xs transition-transform hover:scale-105">
+                          <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+
+                        <h4 className="mt-4 text-base font-semibold text-slate-800">
+                          Discharge Summary Template
+                        </h4>
+                        <p className="mt-1 max-w-xs text-xs text-slate-500">
+                          Upload your hospital's template or sample summary
+                        </p>
+
+                        <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">DOCX</span>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">Images</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            templateInputRef.current?.click()
+                          }}
+                          className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-clinical-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-clinical-700 active:scale-98"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span>Browse Template</span>
+                        </button>
+                      </div>
+                    ) : (
+                      /* Custom Mode: Staged Template Files */
+                      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="mb-3 flex items-center justify-between text-xs border-b border-slate-100 pb-2.5">
+                            <span className="font-semibold text-slate-800">
+                              ✓ {templateFiles.length} Template Document{templateFiles.length === 1 ? '' : 's'}
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                              Ready for synthesis
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                            {templateFiles.map((tf, i) => (
+                              <div
+                                key={`${tf.name}-${i}`}
+                                className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/50 p-3 transition-colors hover:bg-slate-50"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-clinical-100 text-clinical-700 font-bold text-xs uppercase">
+                                    {tf.name.split('.').pop() || 'DOC'}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="truncate text-xs font-semibold text-slate-800">
+                                      {tf.name}
+                                    </p>
+                                    <p className="text-[11px] font-mono text-slate-500">
+                                      {formatBytes(tf.size)}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setTemplateFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                                  className="cursor-pointer rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                  title="Remove template file"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Custom Template Bottom Controls */}
+                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+                          <button
+                            type="button"
+                            onClick={() => templateInputRef.current?.click()}
+                            className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-clinical-700 hover:text-clinical-800 transition-colors"
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>Add another page or file</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTemplateFiles([])}
+                            className="cursor-pointer text-xs text-slate-400 hover:text-red-600 transition-colors"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    /* Standard Mode: Information & Feature Checklist */
+                    <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-900">
+                            Standard Institutional Template
+                          </h4>
+
+                        </div>
+
+                        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 space-y-3 text-xs text-slate-700">
+                          <p className="text-xs text-slate-600 leading-relaxed">
+                            Generates standardized multi-section discharge summary with strict clinical grounding and built-in physician verification flags:
+                          </p>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-clinical-600 font-bold">✓</span>
+                              <span>Patient Demographics & Admission Details</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-clinical-600 font-bold">✓</span>
+                              <span>Structured ABCDE On-Admission Vitals & Exam</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-clinical-600 font-bold">✓</span>
+                              <span>Inpatient Hospital Course & Timeline</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-clinical-600 font-bold">✓</span>
+                              <span>Key Laboratory Panels & Treatment Given</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-clinical-600 font-bold">✓</span>
+                              <span>Discharge Medications, Follow-up & Red Flags</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTemplateMode('custom')
+                            setError(null)
+                          }}
+                          className="cursor-pointer text-clinical-700 hover:text-clinical-800 font-medium"
+                        >
+                          Use Custom Template →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -656,24 +985,47 @@ export default function HomePage() {
           {/* Error Alert */}
           <ErrorAlert message={error} onDismiss={() => setError(null)} />
 
-          {/* Generate Action Button */}
-          {!loading && files.length > 0 && (
-            <div className="flex justify-end pt-1">
-
+          {/* Action & Generate Bar */}
+          {!loading && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-semibold text-slate-800">
+                  {files.length === 0
+                    ? '0 patient documents'
+                    : `${files.length} document${files.length === 1 ? '' : 's'} ready`}
+                </span>
+                {templateMode === 'custom' ? (
+                  templateFiles.length > 0 && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className="inline-flex items-center gap-1.5 font-medium text-clinical-700 bg-clinical-50 border border-clinical-200 px-2.5 py-1 rounded-lg">
+                        <span className="h-1.5 w-1.5 rounded-full bg-clinical-600"></span>
+                        <span>Custom template ({templateFiles.length} file{templateFiles.length === 1 ? '' : 's'})</span>
+                      </span>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <span className="text-slate-300">·</span>
+                    <span className="inline-flex items-center gap-1.5 font-medium text-clinical-700 bg-clinical-50 border border-clinical-200 px-2.5 py-1 rounded-lg">
+                      <span className="h-1.5 w-1.5 rounded-full bg-clinical-600"></span>
+                      <span>Standard institutional template</span>
+                    </span>
+                  </>
+                )}
+              </div>
 
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={!files.length || loading || optimizing}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-clinical-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:bg-clinical-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 active:scale-98"
+                disabled={!canGenerate}
+                className="inline-flex w-full sm:w-auto cursor-pointer items-center justify-center gap-2 rounded-xl bg-clinical-600 px-6 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:bg-clinical-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 active:scale-98"
               >
                 <svg className="h-4 w-4 text-clinical-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 <span>
-                  {optimizing
-                    ? 'Optimizing documents…'
-                    : `Generate Discharge`}
+                  {optimizing ? 'Optimizing documents…' : 'Generate Discharge Summary'}
                 </span>
               </button>
             </div>

@@ -1,7 +1,12 @@
 import { useEffect } from 'react'
 
+// Matches all AI flags requiring physician review across Standard and Custom flows:
+// 1. [verify], [to be filled], [to be filled by physician]
+// 2. [Not recorded]
+// 3. [Pending / Not Seen in File [verify]]
+// 4. Underscore blanks like ___ or _____
 export const ATTENTION_REGEX =
-  /\[[^\]\r\n]*(?:verif[a-z]*|fill[a-z]*|illegib[a-z]*|pending|confirm[a-z]*|review[a-z]*|specif[a-z]*|missing|not\s+documented|unknown|\b(?:tbd|tbc)\b|\?)[^\]\r\n]*\]/gi
+  /\[[^\]\r\n]*(?:verif[a-z]*|fill[a-z]*|recorded|illegib[a-z]*|pending|confirm[a-z]*|review[a-z]*|specif[a-z]*|missing|not\s+(?:recorded|documented)|unknown|\b(?:tbd|tbc)\b|\?)[^\]\r\n]*\]|___+|_{3,}/gi
 
 /**
  * Scans container text nodes and returns candidate placeholder matches.

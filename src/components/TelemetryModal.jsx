@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { editSummaryPath } from '../api/dischargeApi.js'
+import { editSummaryPath, fetchTemplateMd } from '../api/dischargeApi.js'
 import { USD_TO_INR_RATE } from '../config.js'
 
 function formatTokens(num) {
@@ -19,6 +19,10 @@ function formatCostUsd(val) {
 }
 
 export default function TelemetryModal({ patient, metrics, userId, isOpen, onClose }) {
+  const [templateMd, setTemplateMd] = useState(null)
+  const [loadingTemplate, setLoadingTemplate] = useState(false)
+  const [showTemplate, setShowTemplate] = useState(false)
+
   useEffect(() => {
     if (!isOpen) return
     const handleKeyDown = (e) => {
@@ -28,15 +32,42 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
 
+  // Reset template preview state on patient change or modal close
+  useEffect(() => {
+    setTemplateMd(null)
+    setShowTemplate(false)
+    setLoadingTemplate(false)
+  }, [patient?.patient_id, isOpen])
+
   if (!isOpen || !patient) return null
 
   const summary = metrics?.summary || {}
   const stage1 = metrics?.stages?.stage_1_ocr || {}
+  const stageTemplate = metrics?.stages?.stage_template_extraction || null
   const stage2 = metrics?.stages?.stage_2_synthesis || {}
   const ocrPages = stage1.pages || []
   const modelName = summary.model || metrics?.model || 'gemini-2.5-flash'
   const status = metrics?.status || summary.status || (patient.has_summary ? 'completed' : 'pending')
   const isFailed = status === 'failed'
+
+  const handleToggleTemplate = async () => {
+    if (showTemplate) {
+      setShowTemplate(false)
+      return
+    }
+    if (templateMd === null) {
+      setLoadingTemplate(true)
+      try {
+        const text = await fetchTemplateMd(userId, patient.patient_id)
+        setTemplateMd(text || 'No template markdown found.')
+      } catch {
+        setTemplateMd('Failed to load template markdown.')
+      } finally {
+        setLoadingTemplate(false)
+      }
+    }
+    setShowTemplate(true)
+  }
 
   const promptTokens = summary.prompt_tokens ?? 0
   const visibleTokens = summary.visible_tokens ?? 0
@@ -200,7 +231,7 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
                   Pipeline Stage Breakdown
                 </h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className={`grid grid-cols-1 gap-4 ${stageTemplate ? 'md:grid-cols-3' : 'sm:grid-cols-2'}`}>
                   {/* Stage 1: OCR */}
                   <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -247,12 +278,60 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                     </div>
                   </div>
 
+                  {/* Stage 1b: Template Ingestion (if custom template was used) */}
+                  {stageTemplate && (
+                    <div className="rounded-lg border border-purple-200 bg-purple-50/20 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-[11px] font-bold text-purple-700">
+                            1b
+                          </span>
+                          <h4 className="text-sm font-semibold text-purple-950">
+                            Stage 1b: Template Ingestion
+                          </h4>
+                        </div>
+                        <span className="rounded bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 text-[11px] font-medium uppercase">
+                          {stageTemplate.status || 'success'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs border-t border-purple-100 pt-3">
+                        <div>
+                          <span className="text-slate-400">Duration:</span>
+                          <p className="font-medium text-slate-800">
+                            {stageTemplate.duration_seconds != null ? `${stageTemplate.duration_seconds}s` : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Stage Cost:</span>
+                          <p className="font-semibold text-clinical-700">
+                            {formatCostInr(stageTemplate.cost_inr)}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Input Tokens:</span>
+                          <p className="font-medium text-slate-800">{formatTokens(stageTemplate.prompt_tokens)}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Reasoning Tokens:</span>
+                          <p className="font-medium text-purple-700">{formatTokens(stageTemplate.thought_tokens)}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Visible Tokens:</span>
+                          <p className="font-medium text-emerald-700">
+                            {formatTokens(stageTemplate.visible_tokens ?? stageTemplate.output_tokens)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Stage 2: Synthesis */}
                   <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-700">
-                          2
+                          {stageTemplate ? '3' : '2'}
                         </span>
                         <h4 className="text-sm font-semibold text-slate-900">
                           Stage 2: Clinical Synthesis
@@ -294,6 +373,44 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
                   </div>
                 </div>
               </div>
+
+              {/* Optional Custom Template Viewer */}
+              {(stageTemplate || patient.discharge_type === 'custom') && (
+                <div className="rounded-lg border border-purple-200 bg-purple-50/40 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📋</span>
+                      <div>
+                        <h4 className="text-xs font-semibold text-purple-900">
+                          Custom Discharge Template Markdown
+                        </h4>
+                        <p className="text-[11px] text-purple-700">
+                          Structure parsed from the doctor&apos;s template sample to guide this summary.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleTemplate}
+                      disabled={loadingTemplate}
+                      className="cursor-pointer rounded-md border border-purple-300 bg-white px-3 py-1 text-xs font-medium text-purple-800 shadow-2xs hover:bg-purple-50 transition-colors"
+                    >
+                      {loadingTemplate
+                        ? 'Loading…'
+                        : showTemplate
+                          ? 'Hide Template Structure'
+                          : 'View Template Structure'}
+                    </button>
+                  </div>
+                  {showTemplate && templateMd && (
+                    <div className="mt-3 overflow-hidden rounded-md border border-purple-200 bg-white">
+                      <pre className="max-h-60 overflow-auto p-3 font-mono text-[11px] leading-relaxed text-slate-800 whitespace-pre-wrap">
+                        {templateMd}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Page-by-Page OCR Table */}
               {ocrPages.length > 0 && (
