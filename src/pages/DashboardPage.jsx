@@ -63,7 +63,13 @@ export default function DashboardPage() {
     setError(null)
 
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${idToUse}/patients`)
+      let res = await fetch(`${API_BASE_URL}/dashboard/patients`)
+      if (!res.ok) {
+        res = await fetch(`${API_BASE_URL}/users/6ec0bd7f-11c0-11ca-975e-2a8ad9ebae0b/patients`)
+      }
+      if (!res.ok) {
+        res = await fetch(`${API_BASE_URL}/users/${idToUse}/patients`)
+      }
       if (!res.ok) {
         throw new Error(`Failed to load patient records (${res.status})`)
       }
@@ -79,7 +85,7 @@ export default function DashboardPage() {
         checkedMetricsRef.current.add(p.patient_id)
 
         try {
-          const m = await fetchPatientMetrics(idToUse, p.patient_id)
+          const m = await fetchPatientMetrics(p.user_id || idToUse, p.patient_id)
           if (m) {
             setMetricsMap((prev) => ({ ...prev, [p.patient_id]: m }))
           }
@@ -678,7 +684,7 @@ export default function DashboardPage() {
                             {/* Open Document Editor */}
                             {patient.has_summary !== false && (
                               <Link
-                                to={editSummaryPath(userId, patient.patient_id)}
+                                to={editSummaryPath(patient.user_id || userId, patient.patient_id)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex cursor-pointer items-center rounded-md bg-clinical-50 border border-clinical-200 px-2.5 py-1 text-xs font-medium text-clinical-700 hover:bg-clinical-100 transition-colors"
