@@ -4,7 +4,7 @@ import { saveDoctorAuth } from '../config.js'
 
 export default function DoctorAuthCard({
   title = 'Doctor Profile Setup',
-  description = 'Enter your mobile and a 4-digit PIN once. Your discharges stay private and sync automatically to your laptop.',
+  description = 'Enter your mobile and a 4-digit PIN. Data remains private.',
   buttonText = 'Access Discharges →',
   showBackHome = false,
   onAuthSuccess,
