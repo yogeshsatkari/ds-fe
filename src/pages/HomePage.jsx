@@ -1117,7 +1117,7 @@ export default function HomePage() {
           {loading && (
             <LoadingPanel
               title="Creating your discharge…"
-              message="This can take upto 3 minutes. Please keep this tab open."
+              message="This can take upto 2 minutes. Please keep this tab open."
             />
           )}
 
