@@ -31,6 +31,8 @@ export default function App() {
             }
           />
         )}
+        {/* Redirect random/unavailable URLs to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

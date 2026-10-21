@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { API_BASE_URL } from '../config.js'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import {
+  API_BASE_URL,
+  clearDoctorAuth,
+  getStoredUserId,
+  isDashboardAllowedUser,
+} from '../config.js'
 import {
   editSummaryPath,
   fetchPatientMetrics,
-  getActiveUserId,
 } from '../api/dischargeApi.js'
 import TelemetryModal from '../components/TelemetryModal.jsx'
 import ErrorAlert from '../components/ErrorAlert.jsx'
+import DoctorAuthCard from '../components/DoctorAuthCard.jsx'
 
 function formatTokensCompact(num) {
   if (num == null) return '—'
@@ -27,7 +32,8 @@ function formatCostUsd(val) {
 }
 
 export default function DashboardPage() {
-  const userId = getActiveUserId()
+  const navigate = useNavigate()
+  const [userId, setUserId] = useState(getStoredUserId)
   const [patients, setPatients] = useState([])
   const [metricsMap, setMetricsMap] = useState({})
   const [loading, setLoading] = useState(true)
@@ -43,13 +49,12 @@ export default function DashboardPage() {
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Prevent React StrictMode from double-invoking on mount
-  const hasLoadedRef = useRef(false)
+  // Prevent duplicate metric fetches
   const checkedMetricsRef = useRef(new Set())
 
-  const loadData = useCallback(async () => {
-    if (!userId) {
-      setError('Missing User ID. Please check your configuration.')
+  const loadData = useCallback(async (activeUserId) => {
+    const idToUse = activeUserId || userId
+    if (!idToUse) {
       setLoading(false)
       return
     }
@@ -58,7 +63,7 @@ export default function DashboardPage() {
     setError(null)
 
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/patients`)
+      const res = await fetch(`${API_BASE_URL}/users/${idToUse}/patients`)
       if (!res.ok) {
         throw new Error(`Failed to load patient records (${res.status})`)
       }
@@ -74,7 +79,7 @@ export default function DashboardPage() {
         checkedMetricsRef.current.add(p.patient_id)
 
         try {
-          const m = await fetchPatientMetrics(userId, p.patient_id)
+          const m = await fetchPatientMetrics(idToUse, p.patient_id)
           if (m) {
             setMetricsMap((prev) => ({ ...prev, [p.patient_id]: m }))
           }
@@ -89,10 +94,43 @@ export default function DashboardPage() {
   }, [userId])
 
   useEffect(() => {
-    if (hasLoadedRef.current) return
-    hasLoadedRef.current = true
-    loadData()
-  }, [loadData])
+    if (!userId || !isDashboardAllowedUser(userId)) return
+    loadData(userId)
+  }, [userId, loadData])
+
+  const handleSwitchAccount = () => {
+    if (window.confirm('Switch profile on this device?')) {
+      clearDoctorAuth()
+      setUserId(null)
+      checkedMetricsRef.current.clear()
+      setPatients([])
+      setMetricsMap({})
+    }
+  }
+
+  // 1. If not authenticated in localStorage, show sign-in option
+  if (!userId) {
+    return (
+      <DoctorAuthCard
+        title="Admin Sign In"
+        description="Enter your mobile number and 4-digit PIN to access telemetry and analytics."
+        buttonText="Access Dashboard →"
+        showBackHome={true}
+        onAuthSuccess={(newId) => {
+          if (isDashboardAllowedUser(newId)) {
+            setUserId(newId)
+          } else {
+            navigate('/', { replace: true })
+          }
+        }}
+      />
+    )
+  }
+
+  // 2. If authenticated, but not one of the specified allowed user IDs, silently redirect to /
+  if (!isDashboardAllowedUser(userId)) {
+    return <Navigate to="/" replace />
+  }
 
   // Aggregate KPIs calculated across all patients
   const kpis = useMemo(() => {
@@ -227,8 +265,13 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-3">
-
-
+              <button
+                type="button"
+                onClick={handleSwitchAccount}
+                className="text-xs text-slate-400 hover:text-slate-600 underline cursor-pointer"
+              >
+                Switch Account
+              </button>
               <Link
                 to="/"
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-clinical-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-clinical-700 transition-colors shadow-xs"

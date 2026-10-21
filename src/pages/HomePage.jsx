@@ -5,7 +5,9 @@ import {
   MAX_FILES,
   MAX_TOTAL_SIZE_MB,
   TEMPLATE_FILE_ACCEPT,
-  USER_ID,
+  clearDoctorAuth,
+  getStoredUserId,
+  saveDoctorAuth,
 } from '../config.js'
 import {
   editSummaryPath,
@@ -16,6 +18,7 @@ import { useSession } from '../hooks/useSession.js'
 import LoadingPanel from '../components/LoadingPanel.jsx'
 import ErrorAlert from '../components/ErrorAlert.jsx'
 import PastPatientsList from '../components/PastPatientsList.jsx'
+import DoctorAuthCard from '../components/DoctorAuthCard.jsx'
 import { compressImage } from '../utils/compressImage.js'
 
 function formatBytes(bytes) {
@@ -242,12 +245,16 @@ function DocumentSquareTile({ file, index, onRemove, onPreviewClick }) {
 export default function HomePage() {
   const navigate = useNavigate()
   const { update } = useSession()
+
+  // Reads directly from localStorage on load (0ms latency)
+  const [userId, setUserId] = useState(getStoredUserId)
+
   const [files, setFiles] = useState([])
   const [loading, setLoading] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
   const [error, setError] = useState(null)
   const [patients, setPatients] = useState([])
-  const [patientsLoading, setPatientsLoading] = useState(Boolean(USER_ID))
+  const [patientsLoading, setPatientsLoading] = useState(Boolean(getStoredUserId()))
   const [patientsError, setPatientsError] = useState(null)
 
   // Drag and drop state
@@ -263,37 +270,43 @@ export default function HomePage() {
   // Lightbox preview index (null when modal is closed)
   const [activePreviewIndex, setActivePreviewIndex] = useState(null)
 
-  useEffect(() => {
-    if (!USER_ID) {
+  const fetchPreviousDischarges = useCallback(async (activeUserId) => {
+    if (!activeUserId) {
       setPatients([])
       setPatientsLoading(false)
       return
     }
 
-    let cancelled = false
-
-    async function loadPatients() {
-      setPatientsLoading(true)
-      setPatientsError(null)
-      try {
-        const list = await fetchUserPatients(USER_ID)
-        if (!cancelled) setPatients(list)
-      } catch (err) {
-        if (!cancelled) {
-          setPatients([])
-          setPatientsError(err instanceof Error ? err.message : 'Failed to load patients')
-        }
-      } finally {
-        if (!cancelled) setPatientsLoading(false)
-      }
-    }
-
-    loadPatients()
-
-    return () => {
-      cancelled = true
+    setPatientsLoading(true)
+    setPatientsError(null)
+    try {
+      const list = await fetchUserPatients(activeUserId)
+      setPatients(list)
+    } catch (err) {
+      setPatients([])
+      setPatientsError(err instanceof Error ? err.message : 'Failed to load patients')
+    } finally {
+      setPatientsLoading(false)
     }
   }, [])
+
+  // Whenever userId changes or loads, fetch their previous discharges
+  useEffect(() => {
+    if (userId) {
+      fetchPreviousDischarges(userId)
+    } else {
+      setPatients([])
+      setPatientsLoading(false)
+    }
+  }, [userId, fetchPreviousDischarges])
+
+  const handleSwitchAccount = () => {
+    if (window.confirm('Switch profile on this device?')) {
+      clearDoctorAuth()
+      setUserId(null)
+      setPatients([])
+    }
+  }
 
   const handleAddFiles = useCallback(
     async (newFiles) => {
@@ -592,8 +605,8 @@ export default function HomePage() {
       )
       return
     }
-    if (!USER_ID) {
-      setError('Missing user ID. Set VITE_PLACEHOLDER_USER_ID in your .env file.')
+    if (!userId) {
+      setError('Please set up or log into your doctor profile first.')
       return
     }
 
@@ -602,6 +615,7 @@ export default function HomePage() {
 
     try {
       const data = await extractToDocx({
+        userId,
         files,
         templateFiles: templateMode === 'custom' ? templateFiles : [],
         dischargeType: templateMode,
@@ -610,7 +624,7 @@ export default function HomePage() {
         patientId: data.patientId,
         filename: data.filename,
       })
-      navigate(editSummaryPath(USER_ID, data.patientId))
+      navigate(editSummaryPath(userId, data.patientId))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed')
       setLoading(false)
@@ -618,15 +632,19 @@ export default function HomePage() {
   }
 
   const handleOpenPatient = (patient) => {
-    if (!USER_ID || !patient?.patient_id) return
+    if (!userId || !patient?.patient_id) return
     update({ patientId: patient.patient_id })
-    navigate(editSummaryPath(USER_ID, patient.patient_id))
+    navigate(editSummaryPath(userId, patient.patient_id))
   }
 
   const totalBytes = useMemo(
     () => files.reduce((sum, f) => sum + (f.size || 0), 0),
     [files],
   )
+
+  if (!userId) {
+    return <DoctorAuthCard onAuthSuccess={(id) => setUserId(id)} />
+  }
 
   return (
     <div className="min-h-svh bg-slate-50">
@@ -699,6 +717,13 @@ export default function HomePage() {
               Upload clinical notes and choose your discharge format
             </p>
           </div>
+          <button
+            type="button"
+            onClick={handleSwitchAccount}
+            className="text-xs text-slate-400 hover:text-slate-600 underline cursor-pointer"
+          >
+            Switch Account
+          </button>
         </div>
       </header>
 
@@ -773,10 +798,10 @@ export default function HomePage() {
                       </div>
 
                       <h4 className="mt-4 text-base font-semibold text-slate-800">
-                        {optimizing ? 'Optimizing documents…' : 'Drag & drop patient records here'}
+                        {optimizing ? 'Optimizing documents…' : 'Drop patient records here'}
                       </h4>
                       <p className="mt-1 max-w-xs text-xs text-slate-500">
-                        Upload notes, charts, labs, or hospital papers to summarize
+                        Notes, charts, labs or reports
                       </p>
 
                       <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
@@ -965,7 +990,7 @@ export default function HomePage() {
                           Discharge Summary Template
                         </h4>
                         <p className="mt-1 max-w-xs text-xs text-slate-500">
-                          Upload your hospital's template or sample summary
+                          Your hospital's template
                         </p>
 
                         <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
@@ -1171,7 +1196,7 @@ export default function HomePage() {
           )}
 
           {/* Past Patients List */}
-          {!loading && USER_ID && (
+          {!loading && userId && (
             <PastPatientsList
               patients={patients}
               loading={patientsLoading}
