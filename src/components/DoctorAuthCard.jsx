@@ -109,14 +109,14 @@ export default function DoctorAuthCard({
           files: templateFiles,
           filename: templateFiles[0]?.name || 'custom-template',
         })
-        saveUserTemplateToCloud(activeDoctorId, templateFiles).catch(() => {})
+        await saveUserTemplateToCloud(activeDoctorId, templateFiles)
       } else {
         await saveDoctorTemplate(activeDoctorId, {
           mode: 'standard',
           files: [],
           filename: '',
         })
-        deleteUserTemplateFromCloud(activeDoctorId).catch(() => {})
+        await deleteUserTemplateFromCloud(activeDoctorId)
       }
 
       markOnboardingCompleted(activeDoctorId)

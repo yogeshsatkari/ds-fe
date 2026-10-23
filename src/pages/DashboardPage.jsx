@@ -124,7 +124,7 @@ export default function DashboardPage() {
   }, [userId, loadData])
 
   const handleSwitchAccount = () => {
-    if (window.confirm('Switch profile on this device?')) {
+    if (window.confirm('Log out from this device?')) {
       clearDoctorAuth()
       setUserId(null)
       checkedMetricsRef.current.clear()
