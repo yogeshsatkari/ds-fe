@@ -1,6 +1,10 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { TEMPLATE_FILE_ACCEPT } from '../config.js'
-import { saveDoctorTemplate, clearDoctorTemplate } from '../utils/templateStorage.js'
+import {
+  saveDoctorTemplate,
+  clearDoctorTemplate,
+  markTemplateCloudSynced,
+} from '../utils/templateStorage.js'
 import {
   saveUserTemplateToCloud,
   deleteUserTemplateFromCloud,
@@ -149,55 +153,82 @@ export default function TemplateManagerModal({
       return
     }
 
-    setSaving(true)
     setError(null)
-    try {
-      const filename = stagedFiles[0]?.name || 'custom-template'
+    const filename = stagedFiles[0]?.name || 'custom-template'
+    const filesToSave = [...stagedFiles]
+    const isDefault = applyScope === 'default'
 
-      // Only write to persistent storage if user chose "Save for Later"
-      if (applyScope === 'default') {
+    // 1. Optimistic Local Save (Instant, <5ms)
+    try {
+      if (isDefault) {
         await saveDoctorTemplate(userId, {
           mode: 'custom',
-          files: stagedFiles,
+          files: filesToSave,
           filename,
+          cloudSynced: false,
         })
-        await saveUserTemplateToCloud(userId, stagedFiles)
       }
-
-      onTemplateSaved?.({
-        mode: 'custom',
-        files: stagedFiles,
-        filename,
-        fileCount: stagedFiles.length,
-        isOneOff: applyScope === 'one_off',
-      })
-      onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save template')
-    } finally {
-      setSaving(false)
+      console.warn('Local template save warning:', err)
+    }
+
+    // 2. Instantly notify parent and close modal without waiting!
+    onTemplateSaved?.({
+      mode: 'custom',
+      files: filesToSave,
+      filename,
+      fileCount: filesToSave.length,
+      isOneOff: !isDefault,
+      cloudSynced: false,
+      syncing: isDefault,
+    })
+    onClose()
+
+    // 3. Background Cloud Sync (Runs asynchronously without blocking the user)
+    if (isDefault && userId) {
+      saveUserTemplateToCloud(userId, filesToSave)
+        .then(() => {
+          markTemplateCloudSynced(userId)
+          onTemplateSaved?.({
+            mode: 'custom',
+            files: filesToSave,
+            filename,
+            fileCount: filesToSave.length,
+            isOneOff: false,
+            cloudSynced: true,
+            syncing: false,
+          })
+        })
+        .catch((cloudErr) => {
+          console.warn('Background template cloud sync warning:', cloudErr)
+          // File remains safe and active locally in IndexedDB
+        })
     }
   }
 
   const handleRemove = async () => {
-    setSaving(true)
-    setError(null)
+    // 1. Instantly clear locally and close modal without waiting
     try {
       await clearDoctorTemplate(userId)
-      await deleteUserTemplateFromCloud(userId)
-
-      onTemplateSaved?.({
-        mode: 'standard',
-        files: [],
-        filename: '',
-        fileCount: 0,
-        isOneOff: false,
-      })
-      onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove template')
-    } finally {
-      setSaving(false)
+      console.warn('Clear local template error:', err)
+    }
+
+    onTemplateSaved?.({
+      mode: 'standard',
+      files: [],
+      filename: '',
+      fileCount: 0,
+      isOneOff: false,
+      syncing: false,
+    })
+    onClose()
+
+    // 2. Background Cloud Delete
+    if (userId) {
+      deleteUserTemplateFromCloud(userId).catch((err) => {
+        console.warn('Background cloud template deletion warning:', err)
+      })
     }
   }
 

@@ -12,6 +12,8 @@ import {
   extractToDocx,
   fetchUserPatients,
   fetchUserTemplate,
+  saveUserTemplateToCloud,
+  getActiveTemplateSyncPromise,
 } from '../api/dischargeApi.js'
 import { useSession } from '../hooks/useSession.js'
 import LoadingPanel from '../components/LoadingPanel.jsx'
@@ -21,7 +23,7 @@ import DoctorAuthCard from '../components/DoctorAuthCard.jsx'
 import AccountMenu from '../components/AccountMenu.jsx'
 import TemplateManagerModal from '../components/TemplateManagerModal.jsx'
 import { compressImage } from '../utils/compressImage.js'
-import { getDoctorTemplate } from '../utils/templateStorage.js'
+import { getDoctorTemplate, markTemplateCloudSynced } from '../utils/templateStorage.js'
 
 function formatBytes(bytes) {
   if (!bytes) return '0 B'
@@ -285,6 +287,18 @@ export default function HomePage() {
       getDoctorTemplate(userId).then(async (tpl) => {
         if (tpl && (tpl.mode === 'custom' || tpl.files?.length > 0)) {
           setDoctorTemplate(tpl)
+          // Self-healing: if custom template is saved locally but cloud sync wasn't completed
+          // (e.g. user closed browser or navigated away right after choosing it), silently upload now!
+          if (!tpl.cloudSynced && tpl.files?.length > 0) {
+            saveUserTemplateToCloud(userId, tpl.files)
+              .then(() => {
+                markTemplateCloudSynced(userId)
+                setDoctorTemplate((prev) => ({ ...prev, cloudSynced: true, syncing: false }))
+              })
+              .catch((err) => {
+                console.warn('Silent cloud template self-heal failed:', err)
+              })
+          }
         } else {
           // If local has no custom template, check if cloud has one
           try {
@@ -295,6 +309,8 @@ export default function HomePage() {
                 files: [],
                 filename: cloudMeta.filename || 'Custom Hospital Template',
                 fileCount: cloudMeta.file_count || 1,
+                cloudSynced: true,
+                syncing: false,
               })
             } else if (tpl) {
               setDoctorTemplate(tpl)
@@ -477,14 +493,34 @@ export default function HomePage() {
     setError(null)
 
     const isOneOff = Boolean(doctorTemplate.isOneOff && doctorTemplate.files?.length > 0)
-    const isCustomProfile = Boolean(doctorTemplate.mode === 'custom' && !doctorTemplate.isOneOff)
+    let isCloudSynced = Boolean(doctorTemplate.cloudSynced)
 
-    // Backend Template Resolution:
-    // 1. One-off per-patient: attach templateFiles in request -> backend parses specifically for this patient.
-    // 2. Profile template: omit templateFiles and pass dischargeType: 'custom' -> backend auto-loads cached pre-parsed template.md from R2 (saving 5-10s!).
-    // 3. Standard: omit templateFiles and pass dischargeType: 'standard'.
-    const templateFilesToSend = isOneOff ? doctorTemplate.files : []
-    const dischargeTypeToSend = isOneOff || isCustomProfile ? 'custom' : 'standard'
+    // Deduplication & Cost Prevention:
+    // If a cloud template sync is currently in-flight in the background, await it!
+    // Since the doctor clicked Generate, they are on the generation loading screen anyway.
+    // By awaiting the already-running sync (which is already seconds into processing):
+    // 1. We NEVER call Gemini twice on the same template (zero duplicate AI cost).
+    // 2. The extraction uses the pre-parsed template from R2 directly.
+    const activeSync = getActiveTemplateSyncPromise()
+    if (activeSync && !isCloudSynced && !isOneOff) {
+      try {
+        await Promise.race([
+          activeSync,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 12000)),
+        ])
+        isCloudSynced = true
+      } catch (syncErr) {
+        console.warn('In-flight template sync failed or timed out, falling back to direct upload:', syncErr)
+      }
+    }
+
+    const isCustom = Boolean(doctorTemplate.mode === 'custom' || isOneOff)
+    const shouldSendFiles = Boolean(
+      doctorTemplate.files?.length > 0 &&
+      (isOneOff || !isCloudSynced)
+    )
+    const templateFilesToSend = shouldSendFiles ? doctorTemplate.files : []
+    const dischargeTypeToSend = isCustom ? 'custom' : 'standard'
 
     try {
       const data = await extractToDocx({
@@ -582,9 +618,21 @@ export default function HomePage() {
         <div className="mx-auto flex h-14 sm:h-16 max-w-5xl items-center justify-between px-3.5 sm:px-6">
           {/* Brand Emblem & App Title */}
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-clinical-600 to-teal-600 text-white shadow-xs">
-              <svg className="h-4.5 w-4.5 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-clinical-700 via-teal-600 to-cyan-500 text-white shadow-xs ring-1 ring-white/20">
+              <svg className="h-4.5 w-4.5 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none">
+                {/* Rounded Swiss Medical Cross */}
+                <path
+                  d="M10.5 4.5a1.5 1.5 0 0 0-3 0v4H3.5a1.5 1.5 0 0 0 0 3h4v4a1.5 1.5 0 0 0 3 0v-4h4a1.5 1.5 0 0 0 0-3h-4v-4z"
+                  fill="currentColor"
+                />
+                {/* 4-Point AI Sparkle */}
+                <path
+                  d="M18.5 2.5c0 2.2 1.6 3.8 3.8 3.8-2.2 0-3.8 1.6-3.8 3.8 0-2.2-1.6-3.8-3.8-3.8 2.2 0 3.8-1.6 3.8-3.8z"
+                  fill="currentColor"
+                  className="text-cyan-200"
+                />
+                {/* Micro Accent Spark */}
+                <circle cx="20" cy="14" r="1" fill="currentColor" opacity="0.85" className="text-cyan-100" />
               </svg>
             </div>
             <div className="min-w-0">
@@ -693,10 +741,9 @@ export default function HomePage() {
                     </p>
 
                     <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
                       <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">JPG</span>
                       <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PNG</span>
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">TIFF</span>
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
                     </div>
 
                     <button

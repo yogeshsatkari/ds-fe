@@ -83,6 +83,7 @@ export async function getDoctorTemplate(userId) {
           files: reconstructedFiles,
           filename: record.filename || (reconstructedFiles[0]?.name ?? ''),
           fileCount: reconstructedFiles.length,
+          cloudSynced: Boolean(record.cloudSynced),
           updatedAt: record.updatedAt || null,
         })
       }
@@ -100,9 +101,9 @@ export async function getDoctorTemplate(userId) {
 /**
  * Save doctor template preference to IndexedDB.
  * @param {string} userId
- * @param {{ mode: 'standard' | 'custom', files?: File[], filename?: string }} payload
+ * @param {{ mode: 'standard' | 'custom', files?: File[], filename?: string, cloudSynced?: boolean }} payload
  */
-export async function saveDoctorTemplate(userId, { mode = 'standard', files = [], filename = '' }) {
+export async function saveDoctorTemplate(userId, { mode = 'standard', files = [], filename = '', cloudSynced = false }) {
   if (!userId) return
 
   // Also cache mode in localStorage for immediate sync checks
@@ -137,6 +138,7 @@ export async function saveDoctorTemplate(userId, { mode = 'standard', files = []
         mode,
         files: filePayload,
         filename: resolvedFilename,
+        cloudSynced: Boolean(cloudSynced),
         updatedAt: new Date().toISOString(),
       }
 
@@ -151,9 +153,38 @@ export async function saveDoctorTemplate(userId, { mode = 'standard', files = []
 }
 
 /**
+ * Mark custom template as successfully synced to Cloud R2.
+ */
+export async function markTemplateCloudSynced(userId) {
+  if (!userId) return false
+  const db = await openDb()
+  if (!db) return false
+
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      const store = tx.objectStore(STORE_NAME)
+      const req = store.get(userId)
+      req.onsuccess = () => {
+        const record = req.result
+        if (record && record.mode === 'custom') {
+          record.cloudSynced = true
+          record.updatedAt = new Date().toISOString()
+          store.put(record)
+        }
+        resolve(true)
+      }
+      req.onerror = () => resolve(false)
+    } catch {
+      resolve(false)
+    }
+  })
+}
+
+/**
  * Clear doctor template back to standard institutional format.
  */
 export async function clearDoctorTemplate(userId) {
   if (!userId) return
-  return saveDoctorTemplate(userId, { mode: 'standard', files: [], filename: '' })
+  return saveDoctorTemplate(userId, { mode: 'standard', files: [], filename: '', cloudSynced: false })
 }

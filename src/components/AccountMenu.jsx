@@ -51,27 +51,22 @@ export default function AccountMenu({
 
   return (
     <div className="relative inline-block text-left" ref={menuRef}>
-      {/* Trigger Button: Sleek Doctor Pill */}
+      {/* Trigger Button: Clean Round Profile Icon */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="inline-flex cursor-pointer items-center gap-1.5 sm:gap-2 rounded-full border border-slate-200/90 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-medium text-slate-700 shadow-2xs transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-98 shrink-0"
+        className={`relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-full border transition-all duration-150 shadow-2xs active:scale-95 shrink-0 ${
+          isOpen
+            ? 'border-clinical-500 bg-clinical-50/70 text-clinical-700 ring-2 ring-clinical-500/20'
+            : 'border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
+        }`}
+        aria-label="Doctor profile menu"
         aria-expanded={isOpen}
         aria-haspopup="true"
+        title="Doctor Profile"
       >
-        <span className="flex h-5 w-5 sm:h-5.5 sm:w-5.5 items-center justify-center rounded-full bg-teal-50 text-teal-700 text-xs font-bold shrink-0">
-          🩺
-        </span>
-        <span className="font-semibold text-slate-800 text-[11px] sm:text-xs">
-          {doctorPhone ? `…${doctorPhone.slice(-4)}` : 'Doctor'}
-        </span>
-        <svg
-          className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        <svg className="h-4.5 w-4.5 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       </button>
 

@@ -188,21 +188,39 @@ export async function fetchUserTemplate(userId) {
   }
 }
 
+let pendingCloudTemplateSync = null
+
+export function getActiveTemplateSyncPromise() {
+  return pendingCloudTemplateSync
+}
+
 export async function saveUserTemplateToCloud(userId, files) {
   if (!userId || !files?.length) return null
   const form = new FormData()
   for (const f of files) {
     form.append('template_files', f)
   }
-  const res = await fetch(`${API_BASE_URL}/users/${userId}/template`, {
-    method: 'POST',
-    body: form,
-  })
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.detail || `Upload failed (${res.status})`)
-  }
-  return res.json()
+
+  const syncPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${userId}/template`, {
+        method: 'POST',
+        body: form,
+      })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}))
+        throw new Error(error.detail || `Upload failed (${res.status})`)
+      }
+      return await res.json()
+    } finally {
+      if (pendingCloudTemplateSync === syncPromise) {
+        pendingCloudTemplateSync = null
+      }
+    }
+  })()
+
+  pendingCloudTemplateSync = syncPromise
+  return syncPromise
 }
 
 export async function deleteUserTemplateFromCloud(userId) {
