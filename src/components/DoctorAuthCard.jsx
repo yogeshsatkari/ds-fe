@@ -95,7 +95,7 @@ export default function DoctorAuthCard({
     if (!activeDoctorId) return
 
     if (templateMode === 'custom' && templateFiles.length === 0) {
-      setTemplateError('Please attach your hospital template document or choose Standard Format.')
+      setTemplateError('Please attach a sample discharge document or choose Standard Format.')
       return
     }
 
@@ -291,10 +291,10 @@ export default function DoctorAuthCard({
                     <span className="text-xl">📁</span>
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">
-                        Upload Hospital Template
+                        Upload Sample Discharge
                       </h4>
                       <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
-                        Attach your hospital's Word (.docx), PDF, or photos of your blank summary sheet.
+                        Attach an existing sample discharge (.docx, .pdf) or photos of your blank summary sheet to clone its format.
                       </p>
                     </div>
                   </div>
@@ -326,7 +326,7 @@ export default function DoctorAuthCard({
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        <span>Attach Template File</span>
+                        <span>Attach Sample File</span>
                       </button>
                     ) : (
                       <div className="flex items-center justify-between rounded-lg bg-white border border-teal-200 p-2 text-xs">

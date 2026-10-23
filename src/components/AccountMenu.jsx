@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { getStoredDoctorPhone } from '../config.js'
+import { Link } from 'react-router-dom'
+import { getStoredDoctorPhone, isDashboardAllowedUser } from '../config.js'
 
 export default function AccountMenu({
   userId,
@@ -50,22 +51,22 @@ export default function AccountMenu({
 
   return (
     <div className="relative inline-block text-left" ref={menuRef}>
-      {/* Trigger Button */}
+      {/* Trigger Button: Sleek Doctor Pill */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-2xs transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-98"
+        className="inline-flex cursor-pointer items-center gap-1.5 sm:gap-2 rounded-full border border-slate-200/90 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-medium text-slate-700 shadow-2xs transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-98 shrink-0"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-50 text-teal-700 text-sm font-bold">
+        <span className="flex h-5 w-5 sm:h-5.5 sm:w-5.5 items-center justify-center rounded-full bg-teal-50 text-teal-700 text-xs font-bold shrink-0">
           🩺
         </span>
-        <span className="hidden sm:inline font-semibold text-slate-800">
-          {doctorPhone ? `+91 …${doctorPhone.slice(-4)}` : 'Doctor Account'}
+        <span className="font-semibold text-slate-800 text-[11px] sm:text-xs">
+          {doctorPhone ? `…${doctorPhone.slice(-4)}` : 'Doctor'}
         </span>
         <svg
-          className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -76,9 +77,9 @@ export default function AccountMenu({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 origin-top-right rounded-2xl border border-slate-100 bg-white shadow-xl ring-1 ring-slate-900/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-2xl border border-slate-100 bg-white shadow-xl ring-1 ring-slate-900/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
           {/* Account Profile Header */}
-          <div className="border-b border-slate-100 bg-slate-50/70 p-4">
+          <div className="border-b border-slate-100 bg-slate-50/70 p-3.5 sm:p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-teal-700 text-xl font-bold shadow-2xs">
                 👨‍⚕️
@@ -105,7 +106,7 @@ export default function AccountMenu({
               }}
               className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-xs text-slate-700 hover:bg-teal-50/60 hover:text-teal-900 transition-colors text-left"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-600 shrink-0">
                 {currentTemplate.mode === 'custom' ? (
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -118,15 +119,34 @@ export default function AccountMenu({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-slate-800">
-                  {currentTemplate.mode === 'custom' ? 'Update Template' : 'Add Custom Template'}
+                  {currentTemplate.mode === 'custom' ? 'Update Sample Discharge' : 'Add Sample Discharge'}
                 </p>
                 <p className="text-[10px] text-slate-400 truncate">
                   {currentTemplate.mode === 'custom'
-                    ? currentTemplate.filename || 'Hospital Template'
-                    : 'Upload your hospital format'}
+                    ? `Sample: ${currentTemplate.filename || 'Sample Discharge'}`
+                    : 'Upload a sample discharge summary'}
                 </p>
               </div>
             </button>
+
+            {/* Admin Dashboard if allowed */}
+            {isDashboardAllowedUser(userId) && (
+              <Link
+                to="/dashboard"
+                onClick={() => setIsOpen(false)}
+                className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-xs text-slate-700 hover:bg-clinical-50/70 hover:text-clinical-900 transition-colors text-left"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-clinical-50 text-clinical-600 shrink-0">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-slate-800">Analytics Dashboard</p>
+                  <p className="text-[10px] text-slate-400 truncate">Telemetry & metrics</p>
+                </div>
+              </Link>
+            )}
           </div>
 
           {/* Logout Footer */}
@@ -136,7 +156,7 @@ export default function AccountMenu({
               onClick={handleLogoutClick}
               className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors text-left"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-600">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-600 shrink-0">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>

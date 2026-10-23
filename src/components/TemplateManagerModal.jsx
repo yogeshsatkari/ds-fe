@@ -95,33 +95,31 @@ export default function TemplateManagerModal({
       }
     }
 
-    const firstCat = getCategory(list[0])
+    const hasDocument = list.some((f) => getCategory(f) === 'docx' || getCategory(f) === 'pdf')
 
+    // Rule 1: If incoming file(s) contain a Word (.docx) or PDF (.pdf) document:
+    // Seamlessly replace any existing staged images or files with this document.
+    if (hasDocument) {
+      isAddingMoreRef.current = false
+      const docFile = list.find((f) => getCategory(f) === 'docx' || getCategory(f) === 'pdf')
+      setStagedFiles([docFile])
+      return
+    }
+
+    // Rule 2: If incoming file(s) are all images:
     if (isAddingMoreRef.current) {
-      // User tapped "+ Add More Pages" specifically
-      const allAreImages = list.every((f) => getCategory(f) === 'image')
-      if (!allAreImages) {
-        setError('Only image files (.jpg, .png, .webp) can be added to an existing image template. To use Word or PDF, click Replace.')
-        return
-      }
+      // User explicitly clicked "+ Add page" to append more pages to an image scan
       setStagedFiles((prev) => {
-        const existingKeys = new Set(prev.map((f) => `${f.name}-${f.size}`))
+        const prevImages = prev.filter((f) => getCategory(f) === 'image')
+        const existingKeys = new Set(prevImages.map((f) => `${f.name}-${f.size}`))
         const fresh = list.filter((f) => !existingKeys.has(`${f.name}-${f.size}`))
-        return [...prev, ...fresh]
+        return [...prevImages, ...fresh]
       })
     } else {
-      // Replace / Fresh Upload Mode
-      if (firstCat === 'docx' || firstCat === 'pdf') {
-        if (list.length > 1) {
-          setError('Only a single Word (.docx) or PDF (.pdf) file can be used as a template.')
-          return
-        }
-        setStagedFiles([list[0]])
-      } else {
-        // Fresh image batch
-        setStagedFiles(list)
-      }
+      // Fresh selection / Replace: Replace existing files with the new image(s)
+      setStagedFiles(list)
     }
+    isAddingMoreRef.current = false
   }
 
   const handleDownloadExisting = async () => {
@@ -214,6 +212,17 @@ export default function TemplateManagerModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        onDragOver={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (e.dataTransfer?.files?.length) {
+            handleFilesChosen(e.dataTransfer.files)
+          }
+        }}
         className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         {/* Hidden file input */}
@@ -232,19 +241,19 @@ export default function TemplateManagerModal({
         />
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 text-lg shadow-2xs">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 text-base sm:text-lg shadow-2xs">
               📄
             </span>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                {isCustomActive ? 'Hospital Template' : 'Add Hospital Template'}
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                {isCustomActive ? 'Sample Discharge' : 'Add Sample Discharge'}
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] sm:text-xs text-slate-500 truncate">
                 {isCustomActive
-                  ? 'Your hospital discharge format'
-                  : 'Upload your hospital format (.docx, .pdf, or scan)'}
+                  ? 'Sample format used to format generated summaries'
+                  : 'Upload a sample discharge (.docx, .pdf, or scans)'}
               </p>
             </div>
           </div>
@@ -261,7 +270,7 @@ export default function TemplateManagerModal({
         </div>
 
         {/* Content Body */}
-        <div className="overflow-y-auto p-6 space-y-4">
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
               {error}
@@ -270,39 +279,33 @@ export default function TemplateManagerModal({
 
           {stagedFiles.length === 0 ? (
             isCustomActive ? (
-              /* Active Saved Profile Template Card */
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700">Currently Saved Template</span>
-                  <button
-                    type="button"
-                    onClick={handleTriggerReplace}
-                    className="text-xs font-semibold text-teal-700 hover:text-teal-900 underline cursor-pointer"
-                  >
-                    Replace File
-                  </button>
+              /* Active Saved Profile Sample Card */
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 sm:p-3.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-800 font-bold text-xs uppercase">
+                    {(currentTemplate.filename || '').split('.').pop() || 'DOC'}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-xs font-semibold text-slate-900" title={currentTemplate.filename}>
+                        {currentTemplate.filename || 'Sample Discharge'}
+                      </p>
+                      <span className="hidden sm:inline-flex items-center rounded-full bg-teal-50 border border-teal-200 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 shrink-0">
+                        Active Default
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      Applied automatically to format all discharges
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between rounded-xl bg-white border border-slate-200 p-3.5 text-xs shadow-2xs">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-800 font-bold text-xs uppercase">
-                      {(currentTemplate.filename || '').split('.').pop() || 'DOC'}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">
-                        {currentTemplate.filename || 'Custom Hospital Template'}
-                      </p>
-                      <p className="text-[11px] text-teal-600 font-medium">
-                        Saved in Profile · Automatically applied for all discharges
-                      </p>
-                    </div>
-                  </div>
-
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                   <button
                     type="button"
                     onClick={handleDownloadExisting}
                     disabled={downloading}
-                    className="ml-2 inline-flex items-center gap-1.5 shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition-colors cursor-pointer disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
                     title="Download active template file from cloud"
                   >
                     <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -310,11 +313,14 @@ export default function TemplateManagerModal({
                     </svg>
                     <span>{downloading ? 'Downloading…' : 'Download'}</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleTriggerReplace}
+                    className="inline-flex items-center rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 transition-colors cursor-pointer"
+                  >
+                    Replace
+                  </button>
                 </div>
-
-                <p className="text-[11px] text-slate-500">
-                  To change or replace this template, tap <strong>Replace File</strong> above.
-                </p>
               </div>
             ) : (
               /* Empty State: Dropzone */
@@ -323,18 +329,18 @@ export default function TemplateManagerModal({
                 tabIndex={0}
                 onClick={() => fileInputRef.current?.click()}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && fileInputRef.current?.click()}
-                className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 p-8 text-center hover:border-teal-500 hover:bg-teal-50/30 transition-colors"
+                className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 p-6 sm:p-7 text-center hover:border-teal-500 hover:bg-teal-50/30 transition-colors"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-600 mb-2 shadow-2xs">
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-600 mb-2 shadow-2xs">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                 </div>
                 <p className="text-sm font-semibold text-slate-800">
-                  Upload Hospital Template
+                  Upload Sample Discharge
                 </p>
                 <p className="mt-1 text-xs text-slate-500 max-w-xs">
-                  Word (.docx), PDF (.pdf), or photos of your hospital's blank summary sheet
+                  (.docx, .pdf or photos)
                 </p>
                 <button
                   type="button"
@@ -342,7 +348,7 @@ export default function TemplateManagerModal({
                     e.stopPropagation()
                     fileInputRef.current?.click()
                   }}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 transition-colors"
+                  className="mt-3.5 inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -353,78 +359,134 @@ export default function TemplateManagerModal({
             )
           ) : (
             /* Selected File Preview & Usage Options */
-            <div className="space-y-4">
+            <div className="space-y-3">
               {(() => {
-                const isImageTemplate =
-                  stagedFiles.length > 0 && stagedFiles.every((f) => getCategory(f) === 'image')
+                const isMultiImage =
+                  stagedFiles.length > 1 && stagedFiles.every((f) => getCategory(f) === 'image')
 
+                // Single file (whether document or single image)
+                if (!isMultiImage) {
+                  const file = stagedFiles[0]
+                  const isImage = getCategory(file) === 'image'
+                  const ext = (file?.name || '').split('.').pop()?.toUpperCase() || (isImage ? 'IMG' : 'DOC')
+
+                  return (
+                    <div className="flex items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 sm:px-3.5 sm:py-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-teal-100 text-teal-800 font-bold text-[10px] uppercase">
+                          {ext}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-slate-900" title={file.name}>
+                            {file.name}
+                          </p>
+                          <p className="text-[11px] text-slate-400">{formatBytes(file.size)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+                        {isImage ? (
+                          <button
+                            type="button"
+                            onClick={handleTriggerAddMore}
+                            className="text-xs font-medium text-teal-700 hover:text-teal-900 cursor-pointer transition-colors"
+                          >
+                            <span className="sm:hidden">+ Add page</span>
+                            <span className="hidden sm:inline">+ Add page</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleTriggerReplace}
+                            className="text-xs font-medium text-teal-700 hover:text-teal-900 underline cursor-pointer transition-colors"
+                          >
+                            Replace
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setStagedFiles([])}
+                          className="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-200/60 hover:text-red-600 transition-colors cursor-pointer"
+                          title="Remove file"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                }
+
+                // Multi-page image scans (2 or more pages)
                 return (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-700">
-                        {isImageTemplate
-                          ? `Template Scans (${stagedFiles.length} page${stagedFiles.length === 1 ? '' : 's'})`
-                          : 'Template Document'}
+                  <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                    {/* Header Bar */}
+                    <div className="flex items-center justify-between gap-2 bg-slate-50/80 px-3 py-2 sm:px-3.5 border-b border-slate-200/80 text-xs">
+                      <span className="font-semibold text-slate-700 whitespace-nowrap text-xs">
+                        <span className="sm:hidden">Scans ({stagedFiles.length}p)</span>
+                        <span className="hidden sm:inline">Sample Scans ({stagedFiles.length} pages)</span>
                       </span>
-                      <button
-                        type="button"
-                        onClick={handleTriggerReplace}
-                        className="font-semibold text-teal-700 hover:text-teal-900 underline cursor-pointer"
-                      >
-                        {isImageTemplate ? 'Replace All' : 'Replace File'}
-                      </button>
+                      <div className="flex items-center gap-2 text-xs shrink-0 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={handleTriggerAddMore}
+                          className="font-medium text-teal-700 hover:text-teal-900 cursor-pointer transition-colors"
+                        >
+                          <span className="sm:hidden">+ Add page</span>
+                          <span className="hidden sm:inline">+ Add page</span>
+                        </button>
+                        <span className="text-slate-300">·</span>
+                        <button
+                          type="button"
+                          onClick={() => setStagedFiles([])}
+                          className="font-medium text-slate-500 hover:text-red-600 cursor-pointer transition-colors"
+                        >
+                          Clear
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="space-y-2 max-h-56 overflow-y-auto pr-0.5">
+                    {/* Slim Divider List */}
+                    <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
                       {stagedFiles.map((file, idx) => (
                         <div
                           key={`${file.name}-${idx}`}
-                          className="flex items-center justify-between rounded-xl bg-white border border-slate-200 px-3.5 py-2.5 text-xs shadow-2xs"
+                          className="flex items-center justify-between px-3.5 py-2 text-xs hover:bg-slate-50/60 transition-colors"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-800 font-bold text-[10px] uppercase">
-                              {file.name.split('.').pop() || (isImageTemplate ? 'IMG' : 'DOC')}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="flex h-5 items-center justify-center rounded bg-teal-50 px-1.5 text-[10px] font-bold text-teal-700 shrink-0">
+                              P.{idx + 1}
                             </span>
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-slate-900">
-                                {isImageTemplate ? `Page ${idx + 1}: ${file.name}` : file.name}
-                              </p>
-                              <p className="text-[11px] text-slate-400">{formatBytes(file.size)}</p>
-                            </div>
+                            <p className="truncate font-medium text-slate-800 min-w-0" title={file.name}>
+                              {file.name}
+                            </p>
+                            <span className="text-[11px] text-slate-400 shrink-0 font-normal">
+                              ({formatBytes(file.size)})
+                            </span>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => setStagedFiles((prev) => prev.filter((_, i) => i !== idx))}
-                            className="text-slate-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
-                            title="Remove this page"
+                            className="flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer shrink-0 ml-2"
+                            title={`Remove page ${idx + 1}`}
                           >
-                            ✕
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                           </button>
                         </div>
                       ))}
                     </div>
-
-                    {isImageTemplate && (
-                      <button
-                        type="button"
-                        onClick={handleTriggerAddMore}
-                        className="w-full mt-2 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-teal-300 bg-teal-50/60 py-2.5 text-xs font-semibold text-teal-700 hover:bg-teal-100/70 hover:border-teal-400 transition-colors"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span>+ Add More Pages</span>
-                      </button>
-                    )}
                   </div>
                 )
               })()}
 
-              {/* 2 Clear Options: Just for now vs Save for later */}
-              <div className="space-y-2 pt-1">
+              {/* Scope Selection: One-off vs Default */}
+              <div className="space-y-2 pt-0.5">
                 <label className="block text-xs font-semibold text-slate-700">
-                  How would you like to use this template?
+                  How would you like to use this sample?
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {/* Option 1: Just for this discharge */}
@@ -433,9 +495,9 @@ export default function TemplateManagerModal({
                     tabIndex={0}
                     onClick={() => setApplyScope('one_off')}
                     onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setApplyScope('one_off')}
-                    className={`cursor-pointer rounded-xl border-2 p-3 transition-all ${
+                    className={`cursor-pointer rounded-xl border p-3 transition-all ${
                       applyScope === 'one_off'
-                        ? 'border-teal-600 bg-teal-50/50 shadow-xs ring-2 ring-teal-600/10'
+                        ? 'border-teal-600 bg-teal-50/50 shadow-xs ring-1 ring-teal-600/20'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
@@ -464,9 +526,9 @@ export default function TemplateManagerModal({
                     tabIndex={0}
                     onClick={() => setApplyScope('default')}
                     onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setApplyScope('default')}
-                    className={`cursor-pointer rounded-xl border-2 p-3 transition-all ${
+                    className={`cursor-pointer rounded-xl border p-3 transition-all ${
                       applyScope === 'default'
-                        ? 'border-teal-600 bg-teal-50/50 shadow-xs ring-2 ring-teal-600/10'
+                        ? 'border-teal-600 bg-teal-50/50 shadow-xs ring-1 ring-teal-600/20'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
@@ -503,7 +565,7 @@ export default function TemplateManagerModal({
               onClick={handleRemove}
               className="text-xs font-semibold text-red-600 hover:text-red-700 cursor-pointer transition-colors"
             >
-              Remove Template
+              Remove Sample
             </button>
           )}
 
@@ -524,7 +586,7 @@ export default function TemplateManagerModal({
                 disabled={saving || stagedFiles.length === 0}
                 className="rounded-xl bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 transition-colors disabled:opacity-50 cursor-pointer"
               >
-                {saving ? 'Applying…' : 'Apply Template'}
+                {saving ? 'Applying…' : 'Apply Sample'}
               </button>
             )}
           </div>

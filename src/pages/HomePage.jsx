@@ -64,44 +64,49 @@ function DocumentLightboxModal({ file, index, total, onClose, onRemove, onNext, 
         className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-6 items-center rounded-full bg-clinical-100 px-2 text-xs font-semibold text-clinical-700">
+        <div className="border-b border-slate-200 bg-white px-3.5 py-2.5 sm:px-5 sm:py-3 space-y-1.5">
+          {/* Top Control Bar: Page Badge (Left) + Actions (Right) */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="inline-flex h-5.5 sm:h-6 items-center rounded-full bg-clinical-50 border border-clinical-200 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-clinical-700">
               Page {index + 1} of {total}
             </span>
-            <div className="min-w-0">
-              <h2 className="truncate text-sm font-semibold text-slate-900">{file.name}</h2>
-              <p className="text-xs text-slate-500">
-                {formatBytes(file.size)} · {isPdf ? 'PDF Document' : 'Optimized Image'}
-              </p>
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onRemove(index)
+                  onClose()
+                }}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-red-200 bg-red-50/80 px-2 sm:px-2.5 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 hover:border-red-300 active:scale-95"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Remove</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close preview"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                onRemove(index)
-                onClose()
-              }}
-              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              <span>Remove</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-              aria-label="Close preview"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          {/* Heading: Filename & Details */}
+          <div className="flex items-baseline justify-between gap-2 min-w-0">
+            <h2 className="truncate text-xs sm:text-sm font-semibold text-slate-900 min-w-0" title={file.name}>
+              {file.name}
+            </h2>
+            <span className="text-[10px] sm:text-[11px] text-slate-400 shrink-0 font-normal">
+              {formatBytes(file.size)} · {isPdf ? 'PDF' : 'Image'}
+            </span>
           </div>
         </div>
 
@@ -573,23 +578,40 @@ export default function HomePage() {
       />
 
       {/* Main Header with Account Menu */}
-      <header className="shrink-0 border-b border-slate-200 bg-white sticky top-0 z-30">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5 sm:px-6">
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 leading-tight">
-              Discharge Summary
-            </h1>
-            <p className="text-[11px] sm:text-xs text-slate-500">
-              Upload clinical notes to create a verified discharge summary
-            </p>
+      <header className="sticky top-0 z-30 shrink-0 border-b border-slate-200/90 bg-white/95 backdrop-blur-xs">
+        <div className="mx-auto flex h-14 sm:h-16 max-w-5xl items-center justify-between px-3.5 sm:px-6">
+          {/* Brand Emblem & App Title */}
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-clinical-600 to-teal-600 text-white shadow-xs">
+              <svg className="h-4.5 w-4.5 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 leading-tight truncate">
+                  Discharge Summary
+                </h1>
+                <span className="hidden xs:inline-flex items-center rounded-full bg-teal-50 px-1.5 py-0.5 text-[9px] font-semibold text-teal-700 border border-teal-200/60 shrink-0">
+                  AI
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 truncate">
+                <span className="sm:hidden">Clinical summary digitizer</span>
+                <span className="hidden sm:inline">Upload clinical notes to create a verified discharge summary</span>
+              </p>
+            </div>
           </div>
 
-          <AccountMenu
-            userId={userId}
-            currentTemplate={doctorTemplate}
-            onOpenTemplateManager={() => setIsTemplateModalOpen(true)}
-            onLogout={handleSwitchAccount}
-          />
+          {/* Account Profile Menu */}
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            <AccountMenu
+              userId={userId}
+              currentTemplate={doctorTemplate}
+              onOpenTemplateManager={() => setIsTemplateModalOpen(true)}
+              onLogout={handleSwitchAccount}
+            />
+          </div>
         </div>
       </header>
 
@@ -622,21 +644,21 @@ export default function HomePage() {
               )}
 
               {/* Box Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-clinical-100 text-xs font-bold text-clinical-700">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-clinical-100 text-xs font-bold text-clinical-700">
                     1
                   </span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900 leading-none">
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-semibold text-slate-900 leading-none truncate">
                       Patient Clinical Records
                     </h3>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[10px] sm:text-[11px] text-slate-400 truncate block mt-0.5">
                       Notes, charts, labs & clinical documents
                     </span>
                   </div>
                 </div>
-                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                <span className="rounded-full bg-slate-100 px-2 sm:px-2.5 py-0.5 text-[11px] sm:text-xs font-medium text-slate-600 shrink-0 ml-2">
                   {files.length} / {MAX_FILES} files
                 </span>
               </div>
@@ -771,36 +793,44 @@ export default function HomePage() {
 
           {/* Action & Generate Bar */}
           {!loading && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
+              <div className="w-full sm:w-auto">
                 {doctorTemplate.mode === 'custom' && (doctorTemplate.filename || doctorTemplate.files?.length > 0) ? (
-                  <span className="inline-flex items-center gap-1.5 font-medium text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-lg">
-                    <span className="h-1.5 w-1.5 rounded-full bg-teal-600"></span>
-                    <span className="truncate max-w-[150px]">
-                      {doctorTemplate.filename || 'Custom Template'}
-                    </span>
-                    {doctorTemplate.isOneOff && (
-                      <span className="text-[10px] text-teal-600/80 font-normal">
-                        (this discharge only)
+                  <div className="flex items-center justify-between gap-2.5 rounded-xl border border-teal-200 bg-teal-50/70 px-3 py-2 text-xs w-full sm:w-auto">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-teal-100 text-teal-700 text-xs font-bold">
+                        📄
                       </span>
-                    )}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-slate-500 font-medium text-xs shrink-0">
+                          Sample:
+                        </span>
+                        <span
+                          className="font-semibold text-slate-800 truncate max-w-[170px] sm:max-w-[260px]"
+                          title={doctorTemplate.filename}
+                        >
+                          {doctorTemplate.filename || 'Sample Discharge'}
+                        </span>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsTemplateModalOpen(true)}
-                      className="text-teal-700 hover:text-teal-900 ml-1 underline cursor-pointer font-semibold"
+                      className="text-xs font-semibold text-teal-700 hover:text-teal-900 underline cursor-pointer shrink-0 transition-colors ml-1"
                     >
                       Change
                     </button>
-                  </span>
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsTemplateModalOpen(true)}
-                    className="text-slate-500 hover:text-teal-700 underline cursor-pointer transition-colors"
-                  >
-                    + Add hospital template (optional)
-                  </button>
+                  <div className="flex items-center justify-center sm:justify-start w-full">
+                    <button
+                      type="button"
+                      onClick={() => setIsTemplateModalOpen(true)}
+                      className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-500 hover:text-teal-700 underline cursor-pointer transition-colors py-1 text-center"
+                    >
+                      <span>＋ Add sample discharge (optional)</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
