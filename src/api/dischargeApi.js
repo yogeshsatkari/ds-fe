@@ -181,4 +181,99 @@ export async function fetchPatientMetrics(userId, patientId) {
   }
 }
 
+export async function fetchUserTemplate(userId) {
+  if (!userId) return null
+  try {
+    const res = await fetch(`${API_BASE_URL}/users/${userId}/template`)
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
+export async function saveUserTemplateToCloud(userId, files) {
+  if (!userId || !files?.length) return null
+  const form = new FormData()
+  for (const f of files) {
+    form.append('template_files', f)
+  }
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/template`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new Error(error.detail || `Upload failed (${res.status})`)
+  }
+  return res.json()
+}
+
+export async function deleteUserTemplateFromCloud(userId) {
+  if (!userId) return null
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/template`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new Error(error.detail || `Delete failed (${res.status})`)
+  }
+  return res.json()
+}
+
+export async function downloadDoctorTemplateFile(userId) {
+  if (!userId) throw new Error('Missing user ID')
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/template/file`)
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new Error(error.detail || 'Template file not found')
+  }
+  const blob = await res.blob()
+  const filename = parseFilename(res.headers.get('Content-Disposition')) || 'template'
+  return { blob, filename }
+}
+
+// Aliases matching backend specification
+export const getDoctorTemplateCloud = fetchUserTemplate
+export const uploadDoctorTemplate = saveUserTemplateToCloud
+export const deleteDoctorTemplate = deleteUserTemplateFromCloud
+
+/**
+ * Persist doctor phone and PIN to R2 under users/{user_id}/metadata.json
+ */
+export async function saveDoctorMetadataToCloud(userId, { phone, pin }) {
+  if (!userId) return null
+  try {
+    const res = await fetch(`${API_BASE_URL}/users/${userId}/metadata`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: phone ? String(phone).replace(/\D/g, '').slice(-10) : '',
+        pin: pin ? String(pin).trim() : '',
+      }),
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch (err) {
+    console.warn('Failed to save doctor metadata to cloud:', err)
+    return null
+  }
+}
+
+/**
+ * Fetch doctor profile metadata from R2 (users/{user_id}/metadata.json)
+ */
+export async function fetchDoctorMetadataFromCloud(userId) {
+  if (!userId) return null
+  try {
+    const res = await fetch(`${API_BASE_URL}/users/${userId}/metadata`)
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
+
+
 

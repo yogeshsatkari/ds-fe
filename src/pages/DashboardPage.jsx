@@ -13,6 +13,9 @@ import {
 import TelemetryModal from '../components/TelemetryModal.jsx'
 import ErrorAlert from '../components/ErrorAlert.jsx'
 import DoctorAuthCard from '../components/DoctorAuthCard.jsx'
+import AccountMenu from '../components/AccountMenu.jsx'
+import TemplateManagerModal from '../components/TemplateManagerModal.jsx'
+import { getDoctorTemplate } from '../utils/templateStorage.js'
 
 function formatTokensCompact(num) {
   if (num == null) return '—'
@@ -48,6 +51,22 @@ export default function DashboardPage() {
   // Modal State
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Doctor Template State
+  const [doctorTemplate, setDoctorTemplate] = useState({
+    mode: 'standard',
+    files: [],
+    filename: '',
+  })
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (userId) {
+      getDoctorTemplate(userId).then((tpl) => {
+        if (tpl) setDoctorTemplate(tpl)
+      })
+    }
+  }, [userId])
 
   // Prevent duplicate metric fetches
   const checkedMetricsRef = useRef(new Set())
@@ -112,30 +131,6 @@ export default function DashboardPage() {
       setPatients([])
       setMetricsMap({})
     }
-  }
-
-  // 1. If not authenticated in localStorage, show sign-in option
-  if (!userId) {
-    return (
-      <DoctorAuthCard
-        title="Admin Sign In"
-        description="Enter your mobile number and 4-digit PIN to access telemetry and analytics."
-        buttonText="Access Dashboard →"
-        showBackHome={true}
-        onAuthSuccess={(newId) => {
-          if (isDashboardAllowedUser(newId)) {
-            setUserId(newId)
-          } else {
-            navigate('/', { replace: true })
-          }
-        }}
-      />
-    )
-  }
-
-  // 2. If authenticated, but not one of the specified allowed user IDs, silently redirect to /
-  if (!isDashboardAllowedUser(userId)) {
-    return <Navigate to="/" replace />
   }
 
   // Aggregate KPIs calculated across all patients
@@ -243,6 +238,30 @@ export default function DashboardPage() {
       })
   }, [patients, metricsMap, searchQuery, typeFilter, statusFilter, sortBy])
 
+  // 1. If not authenticated in localStorage, show sign-in option
+  if (!userId) {
+    return (
+      <DoctorAuthCard
+        title="Admin Sign In"
+        description="Enter your mobile number and 4-digit PIN to access telemetry and analytics."
+        buttonText="Access Dashboard →"
+        showBackHome={true}
+        onAuthSuccess={(newId) => {
+          if (isDashboardAllowedUser(newId)) {
+            setUserId(newId)
+          } else {
+            navigate('/', { replace: true })
+          }
+        }}
+      />
+    )
+  }
+
+  // 2. If authenticated, but not one of the specified allowed user IDs, silently redirect to /
+  if (!isDashboardAllowedUser(userId)) {
+    return <Navigate to="/" replace />
+  }
+
   const handleOpenTelemetry = (patient) => {
     setSelectedPatient(patient)
     setIsModalOpen(true)
@@ -271,22 +290,22 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSwitchAccount}
-                className="text-xs text-slate-400 hover:text-slate-600 underline cursor-pointer"
-              >
-                Switch Account
-              </button>
               <Link
                 to="/"
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-clinical-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-clinical-700 transition-colors shadow-xs"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-clinical-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-clinical-700 transition-colors shadow-xs"
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                 </svg>
                 <span>New Discharge</span>
               </Link>
+
+              <AccountMenu
+                userId={userId}
+                currentTemplate={doctorTemplate}
+                onOpenTemplateManager={() => setIsTemplateModalOpen(true)}
+                onLogout={handleSwitchAccount}
+              />
             </div>
           </div>
         </div>
@@ -714,6 +733,17 @@ export default function DashboardPage() {
         onClose={() => {
           setIsModalOpen(false)
           setSelectedPatient(null)
+        }}
+      />
+
+      {/* Template Manager Modal */}
+      <TemplateManagerModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        userId={userId}
+        currentTemplate={doctorTemplate}
+        onTemplateSaved={(savedTpl) => {
+          setDoctorTemplate(savedTpl)
         }}
       />
     </div>

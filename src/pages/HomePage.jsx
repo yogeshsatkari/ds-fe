@@ -1,25 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   FILE_ACCEPT,
   MAX_FILES,
   MAX_TOTAL_SIZE_MB,
-  TEMPLATE_FILE_ACCEPT,
   clearDoctorAuth,
   getStoredUserId,
-  saveDoctorAuth,
 } from '../config.js'
 import {
   editSummaryPath,
   extractToDocx,
   fetchUserPatients,
+  fetchUserTemplate,
 } from '../api/dischargeApi.js'
 import { useSession } from '../hooks/useSession.js'
 import LoadingPanel from '../components/LoadingPanel.jsx'
 import ErrorAlert from '../components/ErrorAlert.jsx'
 import PastPatientsList from '../components/PastPatientsList.jsx'
 import DoctorAuthCard from '../components/DoctorAuthCard.jsx'
+import AccountMenu from '../components/AccountMenu.jsx'
+import TemplateManagerModal from '../components/TemplateManagerModal.jsx'
 import { compressImage } from '../utils/compressImage.js'
+import { getDoctorTemplate } from '../utils/templateStorage.js'
 
 function formatBytes(bytes) {
   if (!bytes) return '0 B'
@@ -234,7 +236,7 @@ function DocumentSquareTile({ file, index, onRemove, onPreviewClick }) {
         </svg>
       </button>
 
-      {/* Subtle Sequence Number (Bottom-Right, no pill) */}
+      {/* Sequence Number */}
       <span className="pointer-events-none absolute bottom-1.5 right-2 font-mono text-[11px] font-semibold text-slate-700/80 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] select-none">
         {index + 1}
       </span>
@@ -257,18 +259,48 @@ export default function HomePage() {
   const [patientsLoading, setPatientsLoading] = useState(Boolean(getStoredUserId()))
   const [patientsError, setPatientsError] = useState(null)
 
-  // Drag and drop state
+  // Drag and drop state for patient files
   const [isDragActive, setIsDragActive] = useState(false)
   const fileInputRef = useRef(null)
 
-  // Template state: 'custom' by default (template required), or 'standard'
-  const [templateMode, setTemplateMode] = useState('custom')
-  const [templateFiles, setTemplateFiles] = useState([])
-  const [isTemplateDragActive, setIsTemplateDragActive] = useState(false)
-  const templateInputRef = useRef(null)
+  // Doctor template state (defaults to standard protocol)
+  const [doctorTemplate, setDoctorTemplate] = useState({
+    mode: 'standard',
+    files: [],
+    filename: '',
+  })
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
 
   // Lightbox preview index (null when modal is closed)
   const [activePreviewIndex, setActivePreviewIndex] = useState(null)
+
+  // Load saved template from IndexedDB (or fallback to Cloud R2)
+  useEffect(() => {
+    if (userId) {
+      getDoctorTemplate(userId).then(async (tpl) => {
+        if (tpl && (tpl.mode === 'custom' || tpl.files?.length > 0)) {
+          setDoctorTemplate(tpl)
+        } else {
+          // If local has no custom template, check if cloud has one
+          try {
+            const cloudMeta = await fetchUserTemplate(userId)
+            if (cloudMeta && cloudMeta.mode === 'custom') {
+              setDoctorTemplate({
+                mode: 'custom',
+                files: [],
+                filename: cloudMeta.filename || 'Custom Hospital Template',
+                fileCount: cloudMeta.file_count || 1,
+              })
+            } else if (tpl) {
+              setDoctorTemplate(tpl)
+            }
+          } catch {
+            if (tpl) setDoctorTemplate(tpl)
+          }
+        }
+      })
+    }
+  }, [userId])
 
   const fetchPreviousDischarges = useCallback(async (activeUserId) => {
     if (!activeUserId) {
@@ -301,11 +333,10 @@ export default function HomePage() {
   }, [userId, fetchPreviousDischarges])
 
   const handleSwitchAccount = () => {
-    if (window.confirm('Switch profile on this device?')) {
-      clearDoctorAuth()
-      setUserId(null)
-      setPatients([])
-    }
+    clearDoctorAuth()
+    setUserId(null)
+    setPatients([])
+    setDoctorTemplate({ mode: 'standard', files: [], filename: '' })
   }
 
   const handleAddFiles = useCallback(
@@ -383,7 +414,12 @@ export default function HomePage() {
   const handleClearAll = useCallback(() => {
     setFiles([])
     setError(null)
-  }, [])
+    if (doctorTemplate.isOneOff && userId) {
+      getDoctorTemplate(userId).then((defaultTpl) => {
+        if (defaultTpl) setDoctorTemplate(defaultTpl)
+      })
+    }
+  }, [doctorTemplate.isOneOff, userId])
 
   const onDragEnter = useCallback((e) => {
     e.preventDefault()
@@ -422,189 +458,11 @@ export default function HomePage() {
     [files.length, handleAddFiles],
   )
 
-  const onTemplateDragEnter = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsTemplateDragActive(true)
-  }, [])
-
-  const onTemplateDragOver = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsTemplateDragActive(true)
-  }, [])
-
-  const onTemplateDragLeave = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      setIsTemplateDragActive(false)
-    }
-  }, [])
-
-  const getTemplateCategory = useCallback((file) => {
-    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
-    if (
-      ext === '.docx' ||
-      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ) {
-      return 'docx'
-    }
-    if (ext === '.pdf' || file.type === 'application/pdf') {
-      return 'pdf'
-    }
-    if (
-      ['.png', '.jpg', '.jpeg', '.webp'].includes(ext) ||
-      file.type?.startsWith('image/')
-    ) {
-      return 'image'
-    }
-    if (ext === '.doc') {
-      return 'doc_legacy'
-    }
-    return 'unsupported'
-  }, [])
-
-  const handleOpenTemplatePicker = useCallback((e) => {
-    if (e && typeof e.stopPropagation === 'function') {
-      e.stopPropagation()
-    }
-    if (templateInputRef.current) {
-      templateInputRef.current.value = ''
-      templateInputRef.current.click()
-    }
-  }, [])
-
-  const handleAddTemplateFiles = useCallback(
-    (incomingFiles) => {
-      if (!incomingFiles || incomingFiles.length === 0) return
-      setError(null)
-
-      const categorized = incomingFiles.map((f) => ({
-        file: f,
-        cat: getTemplateCategory(f),
-      }))
-
-      // Check for legacy doc
-      if (categorized.some((c) => c.cat === 'doc_legacy')) {
-        setError(
-          'Legacy Word format (.doc) is not supported. Please save your template as Word (.docx) or PDF (.pdf) and upload again.',
-        )
-        if (templateInputRef.current) templateInputRef.current.value = ''
-        return
-      }
-
-      // Check for unsupported files
-      const unsupported = categorized.filter((c) => c.cat === 'unsupported')
-      if (unsupported.length > 0) {
-        const names = unsupported.map((c) => c.file.name).join(', ')
-        setError(
-          `Unsupported template format for: ${names}. Allowed formats: Word (.docx), PDF (.pdf), or Image files (.jpg, .png, .webp).`,
-        )
-        if (templateInputRef.current) templateInputRef.current.value = ''
-        return
-      }
-
-      // Check file size limits
-      for (const item of categorized) {
-        if (item.file.size > 30 * 1024 * 1024) {
-          setError(`Template file "${item.file.name}" exceeds the 30 MB limit.`)
-          if (templateInputRef.current) templateInputRef.current.value = ''
-          return
-        }
-      }
-
-      // Check categories in the incoming batch
-      const incomingCategories = Array.from(new Set(categorized.map((c) => c.cat)))
-
-      // Cannot mix different categories in the same upload
-      if (incomingCategories.length > 1) {
-        setError(
-          'Incompatible template files. Please upload either a single Word document (.docx), a single PDF (.pdf), or image scans (.jpg, .png) — they cannot be mixed.',
-        )
-        if (templateInputRef.current) templateInputRef.current.value = ''
-        return
-      }
-
-      const category = incomingCategories[0]
-
-      if (category === 'docx') {
-        if (incomingFiles.length > 1) {
-          setError('Only a single Word template (.docx) is supported. Please upload one document.')
-          if (templateInputRef.current) templateInputRef.current.value = ''
-          return
-        }
-        // Exactly one docx file: replace current template
-        setTemplateFiles([categorized[0].file])
-      } else if (category === 'pdf') {
-        if (incomingFiles.length > 1) {
-          setError('Only a single PDF template (.pdf) is supported. Please upload one document.')
-          if (templateInputRef.current) templateInputRef.current.value = ''
-          return
-        }
-        // Exactly one pdf file: replace current template
-        setTemplateFiles([categorized[0].file])
-      } else if (category === 'image') {
-        // All incoming are images
-        setTemplateFiles((prev) => {
-          // If previous template was a docx or pdf, replace it with the images
-          const prevCats = new Set(prev.map((f) => getTemplateCategory(f)))
-          if (prevCats.has('docx') || prevCats.has('pdf')) {
-            return incomingFiles
-          }
-          // If previous was already images, append new ones without duplicates
-          const existingKeys = new Set(prev.map((f) => `${f.name}-${f.size}`))
-          const fresh = incomingFiles.filter((f) => !existingKeys.has(`${f.name}-${f.size}`))
-          return [...prev, ...fresh]
-        })
-      }
-
-      if (templateInputRef.current) {
-        templateInputRef.current.value = ''
-      }
-    },
-    [getTemplateCategory],
-  )
-
-  const handleRemoveTemplateFile = useCallback((index) => {
-    setTemplateFiles((prev) => prev.filter((_, idx) => idx !== index))
-    if (templateInputRef.current) {
-      templateInputRef.current.value = ''
-    }
-    setError(null)
-  }, [])
-
-  const handleClearTemplateFiles = useCallback(() => {
-    setTemplateFiles([])
-    if (templateInputRef.current) {
-      templateInputRef.current.value = ''
-    }
-    setError(null)
-  }, [])
-
-  const onTemplateDrop = useCallback(
-    (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsTemplateDragActive(false)
-      if (e.dataTransfer?.files?.length) {
-        handleAddTemplateFiles(Array.from(e.dataTransfer.files))
-      }
-    },
-    [handleAddTemplateFiles],
-  )
-
-  const isCustomMissingTemplate = templateMode === 'custom' && templateFiles.length === 0
-  const canGenerate = files.length > 0 && !loading && !optimizing && !isCustomMissingTemplate
+  // Ready to generate whenever documents are attached
+  const canGenerate = files.length > 0 && !loading && !optimizing
 
   const handleGenerate = async () => {
     if (!files.length) return
-    if (isCustomMissingTemplate) {
-      setError(
-        'A custom template file (.docx, .pdf, or image) is required when Custom Template mode is selected. Please attach a template file or switch to Standard format.',
-      )
-      return
-    }
     if (!userId) {
       setError('Please set up or log into your doctor profile first.')
       return
@@ -613,13 +471,28 @@ export default function HomePage() {
     setLoading(true)
     setError(null)
 
+    const isOneOff = Boolean(doctorTemplate.isOneOff && doctorTemplate.files?.length > 0)
+    const isCustomProfile = Boolean(doctorTemplate.mode === 'custom' && !doctorTemplate.isOneOff)
+
+    // Backend Template Resolution:
+    // 1. One-off per-patient: attach templateFiles in request -> backend parses specifically for this patient.
+    // 2. Profile template: omit templateFiles and pass dischargeType: 'custom' -> backend auto-loads cached pre-parsed template.md from R2 (saving 5-10s!).
+    // 3. Standard: omit templateFiles and pass dischargeType: 'standard'.
+    const templateFilesToSend = isOneOff ? doctorTemplate.files : []
+    const dischargeTypeToSend = isOneOff || isCustomProfile ? 'custom' : 'standard'
+
     try {
       const data = await extractToDocx({
         userId,
         files,
-        templateFiles: templateMode === 'custom' ? templateFiles : [],
-        dischargeType: templateMode,
+        templateFiles: templateFilesToSend,
+        dischargeType: dischargeTypeToSend,
       })
+      if (doctorTemplate.isOneOff && userId) {
+        getDoctorTemplate(userId).then((defaultTpl) => {
+          if (defaultTpl) setDoctorTemplate(defaultTpl)
+        })
+      }
       update({
         patientId: data.patientId,
         filename: data.filename,
@@ -669,7 +542,18 @@ export default function HomePage() {
         />
       )}
 
-      {/* Hidden File Input */}
+      {/* Template Manager Modal */}
+      <TemplateManagerModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        userId={userId}
+        currentTemplate={doctorTemplate}
+        onTemplateSaved={(savedTpl) => {
+          setDoctorTemplate(savedTpl)
+        }}
+      />
+
+      {/* Hidden File Input for Patient Records */}
       <input
         ref={fileInputRef}
         type="file"
@@ -688,452 +572,188 @@ export default function HomePage() {
         }}
       />
 
-      {/* Hidden File Input for Custom Template */}
-      <input
-        ref={templateInputRef}
-        type="file"
-        accept={TEMPLATE_FILE_ACCEPT}
-        multiple
-        disabled={loading || optimizing}
-        className="hidden"
-        onClick={(e) => {
-          e.target.value = ''
-        }}
-        onChange={(e) => {
-          if (e.target.files?.length) {
-            handleAddTemplateFiles(Array.from(e.target.files))
-            e.target.value = ''
-          }
-        }}
-      />
-
-      <header className="shrink-0 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+      {/* Main Header with Account Menu */}
+      <header className="shrink-0 border-b border-slate-200 bg-white sticky top-0 z-30">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5 sm:px-6">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 leading-tight">
               Discharge Summary
             </h1>
-            <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">
-              Upload clinical notes and choose your discharge format
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              Upload clinical notes to create a verified discharge summary
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleSwitchAccount}
-            className="text-xs text-slate-400 hover:text-slate-600 underline cursor-pointer"
-          >
-            Switch Account
-          </button>
+
+          <AccountMenu
+            userId={userId}
+            currentTemplate={doctorTemplate}
+            onOpenTemplateManager={() => setIsTemplateModalOpen(true)}
+            onLogout={handleSwitchAccount}
+          />
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        <section className="space-y-6">
-          {/* Side-by-Side: Patient Records & Discharge Template */}
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+        <section className="space-y-4">
+          {/* Patient Clinical Records Box (Full Width, Zero Clutter) */}
           {!loading && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              {/* 1. Patient Clinical Records Box */}
-              <div
-                onDragEnter={onDragEnter}
-                onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
-                onDrop={onDrop}
-                className={`relative flex flex-col justify-between rounded-2xl border-2 transition-all duration-150 min-h-[420px] lg:col-span-7 ${isDragActive
-                  ? 'border-clinical-500 bg-clinical-50/50 shadow-md ring-4 ring-clinical-500/10'
-                  : 'border-slate-200 bg-white shadow-2xs hover:border-slate-300'
-                  }`}
-              >
-                {/* Dragging Overlay */}
-                {isDragActive && (
-                  <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-clinical-50/90 backdrop-blur-xs">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-clinical-100 text-clinical-600 shadow-sm animate-bounce">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                      </svg>
-                    </div>
-                    <p className="mt-2 text-sm font-semibold text-clinical-800">
-                      Drop documents to append in sequence
-                    </p>
+            <div
+              onDragEnter={onDragEnter}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              className={`relative flex flex-col justify-between rounded-2xl border-2 transition-all duration-150 min-h-[360px] w-full ${isDragActive
+                ? 'border-clinical-500 bg-clinical-50/50 shadow-md ring-4 ring-clinical-500/10'
+                : 'border-slate-200 bg-white shadow-2xs hover:border-slate-300'
+                }`}
+            >
+              {/* Dragging Overlay */}
+              {isDragActive && (
+                <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-clinical-50/90 backdrop-blur-xs">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-clinical-100 text-clinical-600 shadow-sm animate-bounce">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
                   </div>
-                )}
+                  <p className="mt-2 text-sm font-semibold text-clinical-800">
+                    Drop patient documents to append in sequence
+                  </p>
+                </div>
+              )}
 
-                {/* Box Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-clinical-100 text-xs font-bold text-clinical-700">
-                      1
-                    </span>
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-900 leading-none">
-                        Patient Records
-                      </h3>
-                      <span className="text-[11px] text-slate-400">Notes, charts, labs & records</span>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                    {files.length} / {MAX_FILES} files
+              {/* Box Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-clinical-100 text-xs font-bold text-clinical-700">
+                    1
                   </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 leading-none">
+                      Patient Clinical Records
+                    </h3>
+                    <span className="text-[11px] text-slate-400">
+                      Notes, charts, labs & clinical documents
+                    </span>
+                  </div>
                 </div>
-
-                {/* Box Body */}
-                <div className="flex-1 flex flex-col justify-center">
-                  {files.length === 0 ? (
-                    /* Empty Dropzone State */
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => fileInputRef.current?.click()}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          fileInputRef.current?.click()
-                        }
-                      }}
-                      className="flex cursor-pointer flex-col items-center justify-center p-8 text-center sm:p-10 flex-1"
-                    >
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-clinical-50 text-clinical-600 shadow-2xs transition-transform hover:scale-105">
-                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                      </div>
-
-                      <h4 className="mt-4 text-base font-semibold text-slate-800">
-                        {optimizing ? 'Optimizing documents…' : 'Drop patient records here'}
-                      </h4>
-                      <p className="mt-1 max-w-xs text-xs text-slate-500">
-                        Notes, charts, labs or reports
-                      </p>
-
-                      <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">JPG</span>
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PNG</span>
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">TIFF</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          fileInputRef.current?.click()
-                        }}
-                        disabled={optimizing}
-                        className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-clinical-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-clinical-700 active:scale-98"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span>Browse Files</span>
-                      </button>
-                    </div>
-                  ) : (
-                    /* Staged Files Grid */
-                    <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="mb-3 flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2.5">
-                          <span className="font-medium text-slate-700">
-                            {files.length} page{files.length === 1 ? '' : 's'} in sequence
-                          </span>
-                          <div className="flex items-center gap-2 sm:gap-2.5 font-mono text-[11px] sm:text-xs text-slate-400">
-                            <span>{formatBytes(totalBytes)} of {MAX_TOTAL_SIZE_MB} MB</span>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2.5 max-h-72 overflow-y-auto pr-1">
-                          {files.map((file, index) => (
-                            <DocumentSquareTile
-                              key={`${file.name}-${index}`}
-                              file={file}
-                              index={index}
-                              onRemove={handleRemoveFile}
-                              onPreviewClick={(idx) => setActivePreviewIndex(idx)}
-                            />
-                          ))}
-
-                          {files.length < MAX_FILES ? (
-                            <button
-                              type="button"
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={optimizing}
-                              className="group flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 text-slate-500 transition-all hover:border-clinical-500 hover:bg-clinical-50/50 hover:text-clinical-700 active:scale-95"
-                              title="Add more pages"
-                            >
-                              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white transition-colors group-hover:border-clinical-300 group-hover:text-clinical-600 shadow-2xs">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                                </svg>
-                              </div>
-                              <span className="mt-1.5 text-[11px] font-semibold">
-                                {optimizing ? 'Optimizing…' : 'Add Page'}
-                              </span>
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      {/* Bottom Helper Bar */}
-                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-[11px] text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <span>💡</span>
-                          <span>Click to preview</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleClearAll}
-                          disabled={optimizing}
-                          className="cursor-pointer text-xs text-slate-400 hover:text-red-600 transition-colors"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                  {files.length} / {MAX_FILES} files
+                </span>
               </div>
 
-              {/* 2. Discharge Template Box */}
-              <div
-                onDragEnter={templateMode === 'custom' ? onTemplateDragEnter : undefined}
-                onDragOver={templateMode === 'custom' ? onTemplateDragOver : undefined}
-                onDragLeave={templateMode === 'custom' ? onTemplateDragLeave : undefined}
-                onDrop={templateMode === 'custom' ? onTemplateDrop : undefined}
-                className={`relative flex flex-col justify-between rounded-2xl border-2 transition-all duration-150 min-h-[420px] lg:col-span-5 ${isTemplateDragActive
-                  ? 'border-clinical-500 bg-clinical-50/50 shadow-md ring-4 ring-clinical-500/10'
-                  : 'border-slate-200 bg-white shadow-2xs hover:border-slate-300'
-                  }`}
-              >
-                {/* Dragging Overlay */}
-                {isTemplateDragActive && (
-                  <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-clinical-50/90 backdrop-blur-xs">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-clinical-100 text-clinical-600 shadow-sm animate-bounce">
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              {/* Box Body */}
+              <div className="flex-1 flex flex-col justify-center">
+                {files.length === 0 ? (
+                  /* Empty Dropzone State */
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        fileInputRef.current?.click()
+                      }
+                    }}
+                    className="flex cursor-pointer flex-col items-center justify-center p-8 text-center sm:p-12 flex-1"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-clinical-50 text-clinical-600 shadow-2xs transition-transform hover:scale-105">
+                      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                     </div>
-                    <p className="mt-2 text-sm font-semibold text-clinical-800">
-                      Drop template document here
+
+                    <h4 className="mt-4 text-base font-semibold text-slate-800">
+                      {optimizing ? 'Optimizing documents…' : 'Drop patient records here'}
+                    </h4>
+                    <p className="mt-1 max-w-xs text-xs text-slate-500">
+                      Case sheets, doctor notes, labs or discharge reports
                     </p>
-                  </div>
-                )}
 
-                {/* Box Header with Custom / Standard Switcher */}
-                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-clinical-100 text-xs font-bold text-clinical-700">
-                      2
-                    </span>
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-900 leading-none">
-                        Discharge Template
-                      </h3>
-                      <span className="text-[11px] text-slate-400">
-                        {templateMode === 'custom' ? 'Custom format' : ' Preconfigured clinical discharge protocol'}
-                      </span>
+                    <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">JPG</span>
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PNG</span>
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">TIFF</span>
                     </div>
-                  </div>
 
-                  {/* Mode Switcher: Custom (Default) vs Standard */}
-                  <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100/90 p-0.5 text-xs">
                     <button
                       type="button"
-                      onClick={() => {
-                        setTemplateMode('custom')
-                        setError(null)
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        fileInputRef.current?.click()
                       }}
-                      className={`cursor-pointer rounded-md px-3 py-1 font-medium transition-all ${templateMode === 'custom'
-                        ? 'bg-white text-clinical-700 shadow-2xs font-semibold'
-                        : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                      disabled={optimizing}
+                      className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-clinical-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-clinical-700 active:scale-98"
                     >
-                      Custom
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTemplateMode('standard')
-                        setError(null)
-                      }}
-                      className={`cursor-pointer rounded-md px-3 py-1 font-medium transition-all ${templateMode === 'standard'
-                        ? 'bg-white text-clinical-700 shadow-2xs font-semibold'
-                        : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                    >
-                      Standard
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Browse Patient Documents</span>
                     </button>
                   </div>
-                </div>
-
-                {/* Box Body */}
-                <div className="flex-1 flex flex-col justify-center">
-                  {templateMode === 'custom' ? (
-                    templateFiles.length === 0 ? (
-                      /* Custom Mode: Empty Dropzone (Required) */
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={handleOpenTemplatePicker}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            handleOpenTemplatePicker(e)
-                          }
-                        }}
-                        className="flex cursor-pointer flex-col items-center justify-center p-8 text-center sm:p-10 flex-1"
-                      >
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-clinical-50 text-clinical-600 shadow-2xs transition-transform hover:scale-105">
-                          <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
+                ) : (
+                  /* Staged Files Grid */
+                  <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="mb-3 flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2.5">
+                        <span className="font-medium text-slate-700">
+                          {files.length} document{files.length === 1 ? '' : 's'} in sequence
+                        </span>
+                        <div className="flex items-center gap-2 sm:gap-2.5 font-mono text-[11px] sm:text-xs text-slate-400">
+                          <span>{formatBytes(totalBytes)} of {MAX_TOTAL_SIZE_MB} MB</span>
                         </div>
-
-                        <h4 className="mt-4 text-base font-semibold text-slate-800">
-                          Discharge Summary Template
-                        </h4>
-                        <p className="mt-1 max-w-xs text-xs text-slate-500">
-                          Your hospital's template
-                        </p>
-
-                        <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">DOCX</span>
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">Images</span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={handleOpenTemplatePicker}
-                          className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-clinical-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-clinical-700 active:scale-98"
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                          </svg>
-                          <span>Browse Template</span>
-                        </button>
                       </div>
-                    ) : (
-                      /* Custom Mode: Staged Template Files */
-                      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                            {templateFiles.map((tf, i) => (
-                              <div
-                                key={`${tf.name}-${i}`}
-                                className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/50 p-3 transition-colors hover:bg-slate-50"
-                              >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-clinical-100 text-clinical-700 font-bold text-xs uppercase">
-                                    {tf.name.split('.').pop() || 'DOC'}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="truncate text-xs font-semibold text-slate-800">
-                                      {tf.name}
-                                    </p>
-                                    <p className="text-[11px] font-mono text-slate-500">
-                                      {formatBytes(tf.size)}
-                                    </p>
-                                  </div>
-                                </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveTemplateFile(i)}
-                                  className="cursor-pointer rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                  title="Remove template file"
-                                >
-                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="flex flex-wrap gap-2.5 max-h-80 overflow-y-auto pr-1">
+                        {files.map((file, index) => (
+                          <DocumentSquareTile
+                            key={`${file.name}-${index}`}
+                            file={file}
+                            index={index}
+                            onRemove={handleRemoveFile}
+                            onPreviewClick={(idx) => setActivePreviewIndex(idx)}
+                          />
+                        ))}
 
-                        {/* Custom Template Bottom Controls */}
-                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+                        {files.length < MAX_FILES ? (
                           <button
                             type="button"
-                            onClick={handleOpenTemplatePicker}
-                            className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-clinical-700 hover:text-clinical-800 transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={optimizing}
+                            className="group flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 text-slate-500 transition-all hover:border-clinical-500 hover:bg-clinical-50/50 hover:text-clinical-700 active:scale-95"
+                            title="Add more pages"
                           >
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                              {templateFiles[0] && ['docx', 'pdf'].includes(getTemplateCategory(templateFiles[0])) ? (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              ) : (
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white transition-colors group-hover:border-clinical-300 group-hover:text-clinical-600 shadow-2xs">
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                              )}
-                            </svg>
-                            <span>
-                              {templateFiles[0] && ['docx', 'pdf'].includes(getTemplateCategory(templateFiles[0]))
-                                ? 'Replace template'
-                                : 'Add another page (image)'}
+                              </svg>
+                            </div>
+                            <span className="mt-1.5 text-[11px] font-semibold">
+                              {optimizing ? 'Optimizing…' : 'Add Page'}
                             </span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={handleClearTemplateFiles}
-                            className="cursor-pointer text-xs text-slate-400 hover:text-red-600 transition-colors"
-                          >
-                            Clear
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    /* Standard Mode: Information & Feature Checklist */
-                    <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="text-sm font-semibold text-slate-900">
-                            Standard Institutional Template
-                          </h4>
-
-                        </div>
-
-                        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 space-y-3 text-xs text-slate-700">
-                          <p className="text-xs text-slate-600 leading-relaxed">
-                            Generates standardized multi-section discharge summary with strict clinical grounding and built-in physician verification flags:
-                          </p>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-clinical-600 font-bold">✓</span>
-                              <span>Patient Demographics & Admission Details</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-clinical-600 font-bold">✓</span>
-                              <span>Structured ABCDE On-Admission Vitals & Exam</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-clinical-600 font-bold">✓</span>
-                              <span>Inpatient Hospital Course & Timeline</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-clinical-600 font-bold">✓</span>
-                              <span>Key Laboratory Panels & Treatment Given</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-clinical-600 font-bold">✓</span>
-                              <span>Discharge Medications, Follow-up & Red Flags</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end text-[11px]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTemplateMode('custom')
-                            setError(null)
-                          }}
-                          className="cursor-pointer text-clinical-700 hover:text-clinical-800 font-medium"
-                        >
-                          Use Custom Template →
-                        </button>
+                        ) : null}
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Bottom Helper Bar */}
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-[11px] text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <span>💡</span>
+                        <span>Tap any thumbnail to preview full page</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleClearAll}
+                        disabled={optimizing}
+                        className="cursor-pointer text-xs text-slate-400 hover:text-red-600 transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1142,7 +762,7 @@ export default function HomePage() {
           {loading && (
             <LoadingPanel
               title="Creating your discharge…"
-              message="This can take upto 2 minutes. Please keep this tab open."
+              message="This can take up to 2 minutes. Please keep this tab open."
             />
           )}
 
@@ -1153,29 +773,34 @@ export default function HomePage() {
           {!loading && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-semibold text-slate-800">
-                  {files.length === 0
-                    ? '0 patient documents'
-                    : `${files.length} document${files.length === 1 ? '' : 's'} ready`}
-                </span>
-                {templateMode === 'custom' ? (
-                  templateFiles.length > 0 && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <span className="inline-flex items-center gap-1.5 font-medium text-clinical-700 bg-clinical-50 border border-clinical-200 px-2.5 py-1 rounded-lg">
-                        <span className="h-1.5 w-1.5 rounded-full bg-clinical-600"></span>
-                        <span>Custom template ({templateFiles.length} file{templateFiles.length === 1 ? '' : 's'})</span>
-                      </span>
-                    </>
-                  )
-                ) : (
-                  <>
-                    <span className="text-slate-300">·</span>
-                    <span className="inline-flex items-center gap-1.5 font-medium text-clinical-700 bg-clinical-50 border border-clinical-200 px-2.5 py-1 rounded-lg">
-                      <span className="h-1.5 w-1.5 rounded-full bg-clinical-600"></span>
-                      <span>Standard institutional template</span>
+
+                {doctorTemplate.mode === 'custom' && (doctorTemplate.filename || doctorTemplate.files?.length > 0) ? (
+                  <span className="inline-flex items-center gap-1.5 font-medium text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-lg">
+                    <span className="h-1.5 w-1.5 rounded-full bg-teal-600"></span>
+                    <span className="truncate max-w-[150px]">
+                      {doctorTemplate.filename || 'Custom Template'}
                     </span>
-                  </>
+                    {doctorTemplate.isOneOff && (
+                      <span className="text-[10px] text-teal-600/80 font-normal">
+                        (this discharge only)
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsTemplateModalOpen(true)}
+                      className="text-teal-700 hover:text-teal-900 ml-1 underline cursor-pointer font-semibold"
+                    >
+                      Change
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsTemplateModalOpen(true)}
+                    className="text-slate-500 hover:text-teal-700 underline cursor-pointer transition-colors"
+                  >
+                    + Add hospital template (optional)
+                  </button>
                 )}
               </div>
 

@@ -37,10 +37,18 @@ export function getStoredUserId() {
   return localStorage.getItem('user_id') || null
 }
 
+export function getStoredDoctorPhone() {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem('doctor_phone') || ''
+}
+
 export function saveDoctorAuth(phone, pin) {
   const userId = generateUserUuid(phone, pin)
   if (typeof window !== 'undefined') {
     localStorage.setItem('user_id', userId)
+    if (phone) {
+      localStorage.setItem('doctor_phone', phone.replace(/\D/g, '').slice(-10))
+    }
   }
   return userId
 }
@@ -48,6 +56,7 @@ export function saveDoctorAuth(phone, pin) {
 export function clearDoctorAuth() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('user_id')
+    localStorage.removeItem('doctor_phone')
   }
 }
 
