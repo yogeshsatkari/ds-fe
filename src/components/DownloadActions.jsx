@@ -23,7 +23,7 @@ export default function DownloadActions({
 
   return (
     <div
-      className="no-print flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-none"
+      className="no-print flex items-center gap-2 w-full sm:w-auto"
       role="group"
       aria-label="Download summary"
     >
