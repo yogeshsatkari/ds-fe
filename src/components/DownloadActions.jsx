@@ -12,9 +12,6 @@ function DownloadIcon({ className = 'h-3.5 w-3.5' }) {
   )
 }
 
-const segmentClass =
-  'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-clinical-50 hover:text-clinical-800 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:py-1.5'
-
 export default function DownloadActions({
   onDownloadDocx,
   onDownloadPdf,
@@ -26,26 +23,29 @@ export default function DownloadActions({
 
   return (
     <div
-      className="no-print inline-flex w-full overflow-hidden rounded-md border border-slate-200 bg-white sm:w-auto"
+      className="no-print flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-none"
       role="group"
       aria-label="Download summary"
     >
+      {/* Primary Action (Main): DOCX */}
       <button
         type="button"
         onClick={onDownloadDocx}
         disabled={disabled || busy}
-        className={`${segmentClass} border-r border-slate-200`}
+        className="inline-flex h-8 sm:h-8.5 flex-1 sm:flex-none cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-clinical-600 bg-clinical-600 px-3 sm:px-3.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-clinical-700 hover:border-clinical-700 active:scale-98 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
       >
-        <DownloadIcon />
+        <DownloadIcon className="h-3.5 w-3.5 text-white shrink-0" />
         <span>{downloading ? 'Preparing…' : 'DOCX'}</span>
       </button>
+
+      {/* Secondary Action: PDF */}
       <button
         type="button"
         onClick={onDownloadPdf}
         disabled={disabled || busy}
-        className={segmentClass}
+        className="inline-flex h-8 sm:h-8.5 flex-1 sm:flex-none cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200/90 bg-white px-3 sm:px-3.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-98 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
       >
-        <DownloadIcon />
+        <DownloadIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
         <span>{convertingPdf ? 'Converting…' : 'PDF'}</span>
       </button>
     </div>
