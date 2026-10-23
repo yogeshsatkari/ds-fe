@@ -5,6 +5,7 @@ import {
   hasCompletedOnboarding,
   markOnboardingCompleted,
   saveDoctorTemplate,
+  markTemplateCloudSynced,
 } from '../utils/templateStorage.js'
 import {
   saveUserTemplateToCloud,
@@ -38,7 +39,6 @@ export default function DoctorAuthCard({
   const [templateMode, setTemplateMode] = useState('standard')
   const [templateFiles, setTemplateFiles] = useState([])
   const [templateError, setTemplateError] = useState('')
-  const [savingTemplate, setSavingTemplate] = useState(false)
   const templateInputRef = useRef(null)
 
   const handleAuthSubmit = (e) => {
@@ -95,35 +95,54 @@ export default function DoctorAuthCard({
     if (!activeDoctorId) return
 
     if (templateMode === 'custom' && templateFiles.length === 0) {
-      setTemplateError('Please attach a sample discharge document or choose Standard Format.')
+      setTemplateError('Please attach a sample discharge summary or choose Default Format.')
       return
     }
 
-    setSavingTemplate(true)
     setTemplateError('')
+    const filesToSave = [...templateFiles]
+    const filename = filesToSave[0]?.name || 'custom-template'
+    const isCustom = templateMode === 'custom' && filesToSave.length > 0
 
+    // 1. Optimistic Local Save (Instant, <5ms)
     try {
-      if (templateMode === 'custom') {
+      if (isCustom) {
         await saveDoctorTemplate(activeDoctorId, {
           mode: 'custom',
-          files: templateFiles,
-          filename: templateFiles[0]?.name || 'custom-template',
+          files: filesToSave,
+          filename,
+          cloudSynced: false,
         })
-        await saveUserTemplateToCloud(activeDoctorId, templateFiles)
       } else {
         await saveDoctorTemplate(activeDoctorId, {
           mode: 'standard',
           files: [],
           filename: '',
+          cloudSynced: false,
         })
-        await deleteUserTemplateFromCloud(activeDoctorId)
       }
-
-      markOnboardingCompleted(activeDoctorId)
-      onAuthSuccess?.(activeDoctorId)
     } catch (err) {
-      setTemplateError(err instanceof Error ? err.message : 'Failed to save template')
-      setSavingTemplate(false)
+      console.warn('Local onboarding template save warning:', err)
+    }
+
+    // 2. Mark onboarding completed and IMMEDIATELY let user proceed to dashboard!
+    markOnboardingCompleted(activeDoctorId)
+    onAuthSuccess?.(activeDoctorId)
+
+    // 3. Background Cloud Sync (Runs asynchronously without blocking the user!)
+    if (isCustom) {
+      saveUserTemplateToCloud(activeDoctorId, filesToSave)
+        .then(() => {
+          markTemplateCloudSynced(activeDoctorId)
+        })
+        .catch((cloudErr) => {
+          console.warn('Background onboarding template cloud sync warning:', cloudErr)
+          // File remains safe and active in IndexedDB; HomePage auto-heal handles any retries
+        })
+    } else {
+      deleteUserTemplateFromCloud(activeDoctorId).catch((err) => {
+        console.warn('Background delete template warning:', err)
+      })
     }
   }
 
@@ -212,7 +231,7 @@ export default function DoctorAuthCard({
             </div>
 
             <p className="text-xs text-slate-500 mb-5 leading-relaxed">
-              How would you like your discharge summaries generated? You can update this anytime from your account menu.
+              Choose how your summaries should look. You can update this anytime.
             </p>
 
             <form onSubmit={handleTemplateFinish} className="space-y-3.5">
@@ -225,7 +244,7 @@ export default function DoctorAuthCard({
                 onChange={handleTemplateFilesChange}
               />
 
-              {/* Option A: Standard Format */}
+              {/* Option A: Default Format */}
               <div
                 role="button"
                 tabIndex={0}
@@ -240,25 +259,25 @@ export default function DoctorAuthCard({
                     : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl">✨</span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-slate-900">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                    <span className="text-xl shrink-0 mt-0.5">✨</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <h4 className="text-xs font-bold text-slate-900 leading-tight">
                           Default Format
                         </h4>
-                        <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-700">
+                        <span className="whitespace-nowrap rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 border border-teal-200/60 shrink-0">
                           Ready immediately
                         </span>
                       </div>
                       <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
-                        Start right away without a custom template. You can add one anytime from your account menu.
+                        Standard hospital format. No setup required.
                       </p>
                     </div>
                   </div>
                   <span
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
                       templateMode === 'standard'
                         ? 'border-teal-600 bg-teal-600 text-white'
                         : 'border-slate-300'
@@ -271,7 +290,7 @@ export default function DoctorAuthCard({
                 </div>
               </div>
 
-              {/* Option B: Upload Hospital Template */}
+              {/* Option B: Upload Sample Discharge */}
               <div
                 role="button"
                 tabIndex={0}
@@ -286,20 +305,20 @@ export default function DoctorAuthCard({
                     : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl">📁</span>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                    <span className="text-xl shrink-0 mt-0.5">📁</span>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-slate-900 leading-tight">
                         Upload Sample Discharge
                       </h4>
                       <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
-                        Attach an existing sample discharge (.docx, .pdf) or photos of your blank summary sheet to clone its format.
+                        Match your hospital's layout (.docx, .pdf, or photos).
                       </p>
                     </div>
                   </div>
                   <span
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
                       templateMode === 'custom'
                         ? 'border-teal-600 bg-teal-600 text-white'
                         : 'border-slate-300'
@@ -326,7 +345,7 @@ export default function DoctorAuthCard({
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        <span>Attach Sample File</span>
+                        <span>Attach Sample Discharge</span>
                       </button>
                     ) : (
                       <div className="flex items-center justify-between rounded-lg bg-white border border-teal-200 p-2 text-xs">
@@ -361,10 +380,9 @@ export default function DoctorAuthCard({
 
               <button
                 type="submit"
-                disabled={savingTemplate}
-                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold shadow-md transition cursor-pointer mt-2 disabled:opacity-50"
+                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold shadow-md transition cursor-pointer mt-2 active:scale-98"
               >
-                {savingTemplate ? 'Setting up…' : 'Start Creating Discharges →'}
+                Start Creating Discharges →
               </button>
             </form>
           </>
