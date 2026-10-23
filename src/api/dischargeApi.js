@@ -1,4 +1,4 @@
-import { API_BASE_URL, USER_ID } from '../config.js'
+import { API_BASE_URL, getStoredUserId } from '../config.js'
 
 async function parseError(res) {
   const data = await res.json().catch(() => ({}))
@@ -49,7 +49,7 @@ export async function fetchDischargeSummaryDocx(userId, patientId) {
 }
 
 export async function extractToDocx({
-  userId = USER_ID,
+  userId = getStoredUserId(),
   files,
   templateFiles = [],
   patientId = null,
@@ -89,7 +89,7 @@ export async function extractToDocx({
   return { patientId: patientIdOut, docxBlob, filename }
 }
 
-export async function convertDocxToPdf(docxFile, { userId, patientId }) {
+export async function convertDocxToPdf(docxFile, { userId = getStoredUserId(), patientId }) {
   const form = new FormData()
   form.append('file', docxFile)
   form.append('user_id', userId)
@@ -111,7 +111,7 @@ export async function convertDocxToPdf(docxFile, { userId, patientId }) {
   return { pdfBlob, filename }
 }
 
-export async function fetchUserPatients(userId = USER_ID) {
+export async function fetchUserPatients(userId = getStoredUserId()) {
   if (!userId) {
     throw new Error('Missing user ID')
   }
@@ -159,11 +159,7 @@ export async function fetchTemplateMd(userId, patientId) {
 }
 
 export function getActiveUserId() {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('user_id')
-    if (stored) return stored.trim()
-  }
-  return USER_ID
+  return getStoredUserId()
 }
 
 export async function fetchPatientMetrics(userId, patientId) {

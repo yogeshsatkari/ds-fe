@@ -1,5 +1,4 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://ds-x5ai.onrender.com'
-export const USER_ID = import.meta.env.VITE_PLACEHOLDER_USER_ID ?? ''
 
 export const FILE_ACCEPT = 'image/*,application/pdf,.pdf'
 export const TEMPLATE_FILE_ACCEPT = '.docx,application/pdf,.pdf,image/*'
@@ -60,14 +59,12 @@ export function clearDoctorAuth() {
   }
 }
 
-const allowedDashboardIdsList = [
-  ...(import.meta.env.VITE_DASHBOARD_ALLOWED_USER_IDS ?? '').split(','),
-  import.meta.env.VITE_PLACEHOLDER_USER_ID ?? '',
-]
-
-export const DASHBOARD_ALLOWED_USER_IDS = allowedDashboardIdsList
+const allowedDashboardIdsList = (import.meta.env.VITE_DASHBOARD_ALLOWED_USER_IDS ?? '')
+  .split(',')
   .map((id) => id.trim().toLowerCase())
   .filter(Boolean)
+
+export const DASHBOARD_ALLOWED_USER_IDS = allowedDashboardIdsList
 
 export function isDashboardAllowedUser(userId) {
   if (!userId) return false

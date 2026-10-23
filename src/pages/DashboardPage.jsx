@@ -84,9 +84,6 @@ export default function DashboardPage() {
     try {
       let res = await fetch(`${API_BASE_URL}/dashboard/patients`)
       if (!res.ok) {
-        res = await fetch(`${API_BASE_URL}/users/6ec0bd7f-11c0-11ca-975e-2a8ad9ebae0b/patients`)
-      }
-      if (!res.ok) {
         res = await fetch(`${API_BASE_URL}/users/${idToUse}/patients`)
       }
       if (!res.ok) {
