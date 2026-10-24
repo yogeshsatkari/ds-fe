@@ -159,17 +159,23 @@ export default function AccountMenu({
                     </svg>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block leading-tight">
-                      Sample Discharge
-                    </span>
-                    <h4
-                      className="text-xs font-bold text-slate-900 leading-tight truncate mt-0.5"
-                      title={currentTemplate.filename || 'Standard Format'}
-                    >
-                      {currentTemplate.mode === 'custom' && (currentTemplate.filename || currentTemplate.files?.length > 0)
-                        ? currentTemplate.filename || 'Custom Template'
-                        : 'Default Institutional'}
-                    </h4>
+                    {currentTemplate.mode === 'custom' && (currentTemplate.filename || currentTemplate.files?.length > 0) ? (
+                      <>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block leading-tight">
+                          Sample Discharge
+                        </span>
+                        <h4
+                          className="text-xs font-bold text-slate-900 leading-tight truncate mt-0.5"
+                          title={currentTemplate.filename}
+                        >
+                          {currentTemplate.filename || 'Sample Discharge'}
+                        </h4>
+                      </>
+                    ) : (
+                      <h4 className="text-xs font-bold text-slate-900 leading-tight truncate">
+                        Sample Discharge
+                      </h4>
+                    )}
                   </div>
                 </div>
 

@@ -689,20 +689,15 @@ export default function HomePage() {
 
               {/* Box Header (Responsive, avoids truncation on mobile) */}
               <div className="flex items-center justify-between border-b border-slate-100 px-3.5 py-2.5 sm:px-5 sm:py-3.5">
-                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-xs font-bold text-teal-700 border border-teal-200/60 shadow-2xs">
-                    1
+                <div className="min-w-0">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-none truncate">
+                    <span className="sm:hidden">Patient Records</span>
+                    <span className="hidden sm:inline">Patient Clinical Records</span>
+                  </h3>
+                  <span className="text-[10px] sm:text-[11px] text-slate-400 truncate block mt-0.5">
+                    <span className="sm:hidden">Notes, charts & reports</span>
+                    <span className="hidden sm:inline">Notes, charts, labs & clinical documents</span>
                   </span>
-                  <div className="min-w-0">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-none truncate">
-                      <span className="sm:hidden">Patient Records</span>
-                      <span className="hidden sm:inline">Patient Clinical Records</span>
-                    </h3>
-                    <span className="text-[10px] sm:text-[11px] text-slate-400 truncate block mt-0.5">
-                      <span className="sm:hidden">Notes, charts & reports</span>
-                      <span className="hidden sm:inline">Notes, charts, labs & clinical documents</span>
-                    </span>
-                  </div>
                 </div>
                 <span className="rounded-full bg-slate-100 border border-slate-200/60 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-semibold text-slate-600 shrink-0 ml-2">
                   {files.length} / {MAX_FILES}

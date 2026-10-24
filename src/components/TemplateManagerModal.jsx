@@ -327,8 +327,8 @@ export default function TemplateManagerModal({
               </h2>
               <p className="text-[11px] sm:text-xs text-slate-500 leading-snug mt-0.5">
                 {isCustomActive
-                  ? 'Used to format new discharge'
-                  : 'Upload a sample discharge (.docx, .pdf, or scans)'}
+                  ? 'Used to format new discharge summaries'
+                  : 'Upload a sample discharge (.docx, .pdf, or photos)'}
               </p>
             </div>
           </div>
@@ -365,7 +365,7 @@ export default function TemplateManagerModal({
                       {currentTemplate.filename || 'Sample Discharge'}
                     </p>
                     <p className="text-[11px] text-teal-700 font-medium truncate">
-                      Active Default
+                      Active Sample
                     </p>
                   </div>
                 </div>
