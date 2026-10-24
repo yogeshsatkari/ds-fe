@@ -327,7 +327,7 @@ export default function TemplateManagerModal({
               </h2>
               <p className="text-[11px] sm:text-xs text-slate-500 leading-snug mt-0.5">
                 {isCustomActive
-                  ? 'Used to format new discharge summaries'
+                  ? 'Your discharge summary format'
                   : 'Upload a sample discharge (.docx, .pdf, or photos)'}
               </p>
             </div>
@@ -544,23 +544,16 @@ export default function TemplateManagerModal({
               })()}
 
               {/* Scope Selection: Clean doctor-friendly checkbox */}
-              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 cursor-pointer hover:bg-slate-100/50 transition-colors">
+              <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 cursor-pointer hover:bg-slate-100/50 transition-colors">
                 <input
                   type="checkbox"
                   checked={applyScope === 'default'}
                   onChange={(e) => setApplyScope(e.target.checked ? 'default' : 'one_off')}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer shrink-0"
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer shrink-0"
                 />
-                <div className="min-w-0">
-                  <span className="text-xs font-semibold text-slate-900 block">
-                    Save as default for future discharges
-                  </span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    {applyScope === 'default'
-                      ? 'Format future discharges using this template'
-                      : 'Used for this discharge only'}
-                  </p>
-                </div>
+                <span className="text-xs font-semibold text-slate-900">
+                  Save as default for future discharges
+                </span>
               </label>
             </div>
           )}
@@ -587,7 +580,7 @@ export default function TemplateManagerModal({
             )}
           </button>
 
-          {/* Right: Apply Sample (when staging) OR Delete Sample (when viewing existing) */}
+          {/* Right: Save (when staging) OR Delete Sample (when viewing existing) */}
           <div className="flex items-center gap-2">
             {stagedFiles.length > 0 ? (
               <button
@@ -596,7 +589,7 @@ export default function TemplateManagerModal({
                 disabled={saving || stagedFiles.length === 0}
                 className="rounded-xl bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
               >
-                {saving ? 'Applying…' : 'Apply Sample'}
+                {saving ? 'Saving…' : 'Save'}
               </button>
             ) : (
               isCustomActive && (
@@ -606,7 +599,7 @@ export default function TemplateManagerModal({
                   onClick={handleRemove}
                   className="rounded-xl border border-red-200/90 bg-red-50/60 hover:bg-red-100/70 px-3.5 py-2 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  Delete Sample
+                  Delete
                 </button>
               )
             )}
