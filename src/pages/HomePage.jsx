@@ -847,7 +847,7 @@ export default function HomePage() {
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
-              className={`relative flex flex-col justify-between rounded-2xl border-2 transition-all duration-150 h-[320px] sm:h-[368px] overflow-hidden w-full ${isDragActive
+              className={`relative flex flex-col justify-between rounded-2xl border-2 transition-all duration-150 h-[426px] sm:h-[368px] overflow-hidden w-full ${isDragActive
                 ? 'border-clinical-500 bg-clinical-50/50 shadow-md ring-4 ring-clinical-500/10'
                 : 'border-slate-200 bg-white shadow-2xs hover:border-slate-300'
                 }`}
@@ -924,7 +924,7 @@ export default function HomePage() {
                   /* Staged Files Grid */
                   <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                     <div>
-                      <div className="flex flex-wrap gap-2.5 min-h-[206px] max-h-[206px] sm:min-h-[238px] sm:max-h-[238px] overflow-y-auto pr-1 content-start">
+                      <div className="flex flex-wrap gap-2.5 min-h-[312px] max-h-[312px] sm:min-h-[238px] sm:max-h-[238px] overflow-y-auto pr-1 content-start">
                         {files.map((file, index) => (
                           <DocumentSquareTile
                             key={`${file.name}-${index}`}
