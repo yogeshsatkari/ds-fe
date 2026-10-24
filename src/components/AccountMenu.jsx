@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { getStoredDoctorPhone, isDashboardAllowedUser } from '../config.js'
 
@@ -16,22 +17,7 @@ export default function AccountMenu({
     ? `+91 ••••• •${doctorPhone.slice(-4)}`
     : `Dr. (${(userId || '').slice(0, 6)}…)`
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsOpen(false)
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen])
-
-  // Close on Escape
+  // Close on Escape key
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === 'Escape') setIsOpen(false)
@@ -51,14 +37,36 @@ export default function AccountMenu({
 
   return (
     <div className="relative inline-block text-left" ref={menuRef}>
-      {/* Trigger Button: Clean Round Profile Icon */}
+      {/* Invisible Fullscreen Backdrop: Intercepts outside clicks & taps to prevent penetrating to dropzone */}
+      {isOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-40 bg-transparent cursor-default select-none"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsOpen(false)
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation()
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation()
+            }}
+            aria-hidden="true"
+          />,
+          document.body
+        )}
+
+      {/* Trigger Button: Clean Minimalist Avatar */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-xl border transition-all duration-150 shadow-2xs active:scale-95 shrink-0 ${
+        className={`relative ${isOpen ? 'z-50' : ''} flex h-8.5 w-8.5 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-full border transition-all duration-150 shadow-2xs active:scale-95 shrink-0 ${
           isOpen
             ? 'border-teal-500 bg-teal-50 text-teal-700 ring-2 ring-teal-500/20'
-            : 'border-slate-200/80 bg-slate-50/70 text-slate-700 hover:border-teal-400 hover:bg-teal-50/50 hover:text-teal-700'
+            : 'border-slate-200/90 bg-white text-slate-600 hover:border-teal-400 hover:bg-teal-50/50 hover:text-teal-700'
         }`}
         aria-label="Doctor profile menu"
         aria-expanded={isOpen}
@@ -73,16 +81,14 @@ export default function AccountMenu({
       {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-2xl border border-slate-200/90 bg-white shadow-xl ring-1 ring-slate-900/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-          {/* Calmed Doctor Account Header */}
-          <div className="flex items-center justify-between border-b border-slate-100/80 bg-slate-50/50 px-3.5 py-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm border border-teal-100/80 shadow-2xs">
-                👨‍⚕️
-              </span>
-              <span className="text-xs font-medium text-slate-500 truncate tracking-tight">
-                {displayPhone}
-              </span>
-            </div>
+          {/* Subtle Doctor Account Header */}
+          <div className="flex items-center gap-1.5 border-b border-slate-100/80 bg-slate-50/40 px-3.5 py-1.5">
+            <span className="text-xs select-none opacity-50 leading-none shrink-0" aria-hidden="true">
+              👨‍⚕️
+            </span>
+            <span className="text-[11px] font-medium text-slate-400 truncate tracking-tight">
+              {displayPhone}
+            </span>
           </div>
 
           {/* Featured Hero: Sample Discharge Format */}
