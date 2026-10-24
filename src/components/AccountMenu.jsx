@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { getStoredDoctorPhone, isDashboardAllowedUser } from '../config.js'
 import { downloadDoctorTemplateFile } from '../api/dischargeApi.js'
+import { usePwaInstall } from '../hooks/usePwaInstall.js'
+import InstallPwaModal from './InstallPwaModal.jsx'
 
 export default function AccountMenu({
   userId,
@@ -12,7 +14,10 @@ export default function AccountMenu({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [showInstallModal, setShowInstallModal] = useState(false)
   const menuRef = useRef(null)
+
+  const { canInstall, isInstalled, isIos, promptInstall } = usePwaInstall()
 
   const doctorPhone = getStoredDoctorPhone()
   const displayPhone = doctorPhone
@@ -226,6 +231,23 @@ export default function AccountMenu({
 
           {/* Secondary Actions */}
           <div className="px-2 pb-2 space-y-0.5 border-t border-slate-100/80 pt-1.5">
+            {/* Install PWA Option */}
+            {!isInstalled && (canInstall || isIos) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false)
+                  setShowInstallModal(true)
+                }}
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-teal-700 bg-teal-50/80 hover:bg-teal-100/70 transition-colors text-left"
+              >
+                <svg className="h-4 w-4 text-teal-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>Install Discharge AI</span>
+              </button>
+            )}
+
             {/* Admin Dashboard if allowed */}
             {isDashboardAllowedUser(userId) && (
               <Link
@@ -254,6 +276,15 @@ export default function AccountMenu({
           </div>
         </div>
       )}
+
+      {/* Install PWA Modal */}
+      <InstallPwaModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        onInstall={promptInstall}
+        isIos={isIos}
+        canInstall={canInstall}
+      />
     </div>
   )
 }
