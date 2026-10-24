@@ -328,7 +328,7 @@ export default function TemplateManagerModal({
               <p className="text-[11px] sm:text-xs text-slate-500 leading-snug mt-0.5">
                 {isCustomActive
                   ? 'Your discharge summary format'
-                  : 'Upload a sample discharge (.docx, .pdf, or photos)'}
+                  : 'AI will follow this format for your summaries'}
               </p>
             </div>
           </div>
