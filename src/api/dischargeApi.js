@@ -27,7 +27,8 @@ export function editSummaryPath(userId, patientId) {
 
 export async function fetchDischargeSummaryDocx(userId, patientId) {
   const res = await fetch(
-    `${API_BASE_URL}/extractions/${userId}/${patientId}/discharge-summary.docx`,
+    `${API_BASE_URL}/extractions/${userId}/${patientId}/discharge-summary.docx?_t=${Date.now()}`,
+    { cache: 'no-store' },
   )
 
   if (!res.ok) {
@@ -48,45 +49,97 @@ export async function fetchDischargeSummaryDocx(userId, patientId) {
   return { blob, filename }
 }
 
-export async function extractToDocx({
+export function extractToDocx({
   userId = getStoredUserId(),
   files,
   templateFiles = [],
   patientId = null,
   dischargeType = null,
+  onUploadProgress = null,
+  onUploadComplete = null,
 }) {
-  const form = new FormData()
-  form.append('user_id', userId)
-  if (patientId) {
-    form.append('patient_id', patientId)
-  }
-  for (const file of files) {
-    form.append('files', file)
-  }
-
-  if (templateFiles && templateFiles.length > 0) {
-    form.append('discharge_type', 'custom')
-    for (const tFile of templateFiles) {
-      form.append('template_files', tFile)
+  return new Promise((resolve, reject) => {
+    const form = new FormData()
+    form.append('user_id', userId)
+    if (patientId) {
+      form.append('patient_id', patientId)
     }
-  } else {
-    form.append('discharge_type', dischargeType || 'standard')
-  }
+    for (const file of files) {
+      form.append('files', file)
+    }
 
-  const res = await fetch(`${API_BASE_URL}/extract`, {
-    method: 'POST',
-    body: form,
+    if (templateFiles && templateFiles.length > 0) {
+      form.append('discharge_type', 'custom')
+      for (const tFile of templateFiles) {
+        form.append('template_files', tFile)
+      }
+    } else {
+      form.append('discharge_type', dischargeType || 'standard')
+    }
+
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${API_BASE_URL}/extract`)
+    xhr.responseType = 'blob'
+
+    let uploadFinished = false
+
+    if (xhr.upload) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onUploadProgress) {
+          const percent = Math.round((e.loaded / e.total) * 100)
+          onUploadProgress(percent)
+        }
+      }
+      xhr.upload.onload = () => {
+        uploadFinished = true
+        if (onUploadComplete) {
+          onUploadComplete()
+        }
+      }
+    }
+
+    xhr.onload = async () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const patientIdOut = xhr.getResponseHeader('X-Patient-Id') || patientId
+        const docxBlob = xhr.response
+        const filename =
+          parseFilename(xhr.getResponseHeader('Content-Disposition')) ?? 'discharge-summary.docx'
+        resolve({ patientId: patientIdOut, docxBlob, filename })
+      } else {
+        let detail = `Request failed (${xhr.status})`
+        try {
+          if (xhr.response instanceof Blob) {
+            const text = await xhr.response.text()
+            const data = JSON.parse(text)
+            if (typeof data.detail === 'string') detail = data.detail
+            else if (Array.isArray(data.detail)) {
+              detail = data.detail.map((item) => item.msg ?? JSON.stringify(item)).join('; ')
+            }
+          }
+        } catch {}
+        const err = new Error(detail)
+        err.status = xhr.status
+        err.isUploadPhase = !uploadFinished
+        reject(err)
+      }
+    }
+
+    xhr.onerror = () => {
+      const err = new Error('Failed to fetch')
+      err.name = 'TypeError'
+      err.isUploadPhase = !uploadFinished
+      reject(err)
+    }
+
+    xhr.onabort = () => {
+      const err = new Error('Upload aborted')
+      err.name = 'AbortError'
+      err.isUploadPhase = !uploadFinished
+      reject(err)
+    }
+
+    xhr.send(form)
   })
-
-  if (!res.ok) {
-    await parseError(res)
-  }
-
-  const patientIdOut = res.headers.get('X-Patient-Id')
-  const docxBlob = await res.blob()
-  const filename = parseFilename(res.headers.get('Content-Disposition')) ?? 'discharge-summary.docx'
-
-  return { patientId: patientIdOut, docxBlob, filename }
 }
 
 export async function convertDocxToPdf(docxFile, { userId = getStoredUserId(), patientId }) {

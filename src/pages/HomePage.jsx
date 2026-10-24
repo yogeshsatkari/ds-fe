@@ -10,6 +10,7 @@ import {
 import {
   editSummaryPath,
   extractToDocx,
+  fetchDischargeSummaryDocx,
   fetchUserPatients,
   fetchUserTemplate,
   saveUserTemplateToCloud,
@@ -251,6 +252,8 @@ function DocumentSquareTile({ file, index, onRemove, onPreviewClick }) {
   )
 }
 
+const PENDING_JOB_KEY = 'ds_active_discharge_job'
+
 export default function HomePage() {
   const navigate = useNavigate()
   const { update } = useSession()
@@ -266,6 +269,14 @@ export default function HomePage() {
   const [patientsLoading, setPatientsLoading] = useState(Boolean(getStoredUserId()))
   const [patientsError, setPatientsError] = useState(null)
 
+  // Auto-recovery & upload phase state
+  const [recovering, setRecovering] = useState(false)
+  const [recoveredJob, setRecoveredJob] = useState(null)
+  const [uploadPhase, setUploadPhase] = useState('idle') // 'idle' | 'uploading' | 'processing' | 'recovering'
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploadInterrupted, setIsUploadInterrupted] = useState(false)
+  const activeRecoveryRef = useRef(null)
+
   // Drag and drop state for patient files
   const [isDragActive, setIsDragActive] = useState(false)
   const fileInputRef = useRef(null)
@@ -280,6 +291,64 @@ export default function HomePage() {
 
   // Lightbox preview index (null when modal is closed)
   const [activePreviewIndex, setActivePreviewIndex] = useState(null)
+
+  // Strategy 1 Auto-Recovery: Listen for visibilitychange (doctor switching back from WhatsApp or unlocking phone)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && activeRecoveryRef.current) {
+        const { userId: uId, patientId: pId } = activeRecoveryRef.current
+        try {
+          const { blob, filename } = await fetchDischargeSummaryDocx(uId, pId)
+          if (blob && blob.size > 0) {
+            try {
+              localStorage.removeItem(PENDING_JOB_KEY)
+            } catch {}
+            activeRecoveryRef.current = null
+            setRecovering(false)
+            setLoading(false)
+            update({
+              patientId: pId,
+              filename: filename || 'discharge-summary.docx',
+            })
+            navigate(editSummaryPath(uId, pId))
+          }
+        } catch {
+          // Document still generating on server, poller will continue
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [navigate, update])
+
+  // Strategy 1 Auto-Recovery: On mount, check if there is an in-progress summary from a previous tab/PWA restart (< 10 mins ago)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PENDING_JOB_KEY)
+      if (!saved) return
+      const job = JSON.parse(saved)
+      const age = Date.now() - (job.startedAt || 0)
+      if (age < 10 * 60 * 1000 && job.userId && job.patientId) {
+        fetchDischargeSummaryDocx(job.userId, job.patientId)
+          .then(({ filename }) => {
+            setRecoveredJob({
+              patientId: job.patientId,
+              filename: filename || 'discharge-summary.docx',
+            })
+          })
+          .catch(() => {
+            if (age > 5 * 60 * 1000) {
+              localStorage.removeItem(PENDING_JOB_KEY)
+            }
+          })
+      } else {
+        localStorage.removeItem(PENDING_JOB_KEY)
+      }
+    } catch {
+      localStorage.removeItem(PENDING_JOB_KEY)
+    }
+  }, [])
 
   // Load saved template from IndexedDB (or fallback to Cloud R2)
   useEffect(() => {
@@ -491,6 +560,9 @@ export default function HomePage() {
 
     setLoading(true)
     setError(null)
+    setIsUploadInterrupted(false)
+    setUploadPhase('uploading')
+    setUploadProgress(0)
 
     const isOneOff = Boolean(doctorTemplate.isOneOff && doctorTemplate.files?.length > 0)
     let isCloudSynced = Boolean(doctorTemplate.cloudSynced)
@@ -522,13 +594,34 @@ export default function HomePage() {
     const templateFilesToSend = shouldSendFiles ? doctorTemplate.files : []
     const dischargeTypeToSend = isCustom ? 'custom' : 'standard'
 
+    // Pre-assign patientId so we can track and recover if socket drops or phone locks
+    const patientId = crypto.randomUUID()
+    const jobData = { userId, patientId, startedAt: Date.now() }
+    try {
+      localStorage.setItem(PENDING_JOB_KEY, JSON.stringify(jobData))
+    } catch {}
+    activeRecoveryRef.current = jobData
+
     try {
       const data = await extractToDocx({
         userId,
         files,
         templateFiles: templateFilesToSend,
         dischargeType: dischargeTypeToSend,
+        patientId,
+        onUploadProgress: (pct) => {
+          setUploadProgress(pct)
+        },
+        onUploadComplete: () => {
+          setUploadPhase('processing')
+        },
       })
+      try {
+        localStorage.removeItem(PENDING_JOB_KEY)
+      } catch {}
+      activeRecoveryRef.current = null
+      setUploadPhase('idle')
+
       if (doctorTemplate.isOneOff && userId) {
         getDoctorTemplate(userId).then((defaultTpl) => {
           if (defaultTpl) setDoctorTemplate(defaultTpl)
@@ -540,8 +633,107 @@ export default function HomePage() {
       })
       navigate(editSummaryPath(userId, data.patientId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Generation failed')
+      if (err?.isUploadPhase) {
+        // Interrupted before files finished uploading to the cloud
+        try {
+          localStorage.removeItem(PENDING_JOB_KEY)
+        } catch {}
+        activeRecoveryRef.current = null
+        setLoading(false)
+        setRecovering(false)
+        setUploadPhase('idle')
+        setIsUploadInterrupted(true)
+        setError('Upload was interrupted when you switched apps. Your selected files are still preserved.')
+      } else {
+        // Files were uploaded successfully; connection dropped while waiting for AI synthesis
+        const isNetworkDrop =
+          err?.name === 'TypeError' ||
+          err?.name === 'AbortError' ||
+          String(err?.message || '').toLowerCase().includes('failed to fetch') ||
+          String(err?.message || '').toLowerCase().includes('network') ||
+          (typeof navigator !== 'undefined' && !navigator.onLine)
+
+        if (isNetworkDrop) {
+          setRecovering(true)
+          setUploadPhase('recovering')
+          await pollForCompletedDocument(userId, patientId)
+        } else {
+          try {
+            localStorage.removeItem(PENDING_JOB_KEY)
+          } catch {}
+          activeRecoveryRef.current = null
+          setError(err instanceof Error ? err.message : 'Generation failed')
+          setLoading(false)
+          setRecovering(false)
+          setUploadPhase('idle')
+        }
+      }
+    }
+  }
+
+  // Polling loop for smart auto-recovery if client disconnected during generation
+  const pollForCompletedDocument = async (uId, pId) => {
+    const MAX_ATTEMPTS = 16 // 16 * 3s = ~48 seconds
+    const INTERVAL_MS = 3000
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, INTERVAL_MS))
+
+      // Check if user navigated away or cancelled
+      if (!activeRecoveryRef.current) return
+
+      try {
+        const { blob, filename } = await fetchDischargeSummaryDocx(uId, pId)
+        if (blob && blob.size > 0) {
+          try {
+            localStorage.removeItem(PENDING_JOB_KEY)
+          } catch {}
+          activeRecoveryRef.current = null
+          setRecovering(false)
+          setLoading(false)
+          update({
+            patientId: pId,
+            filename: filename || 'discharge-summary.docx',
+          })
+          navigate(editSummaryPath(uId, pId))
+          return
+        }
+      } catch {
+        // Document still generating on server (404), keep polling
+      }
+    }
+
+    // Polling timeout: keep activeRecoveryRef so doctor can manually click "Check if Ready"
+    setRecovering(false)
+    setLoading(false)
+    setError('Generation is taking a little longer than usual. The server is still finalizing your document in the background.')
+  }
+
+  const handleManualCheckReady = async () => {
+    if (!activeRecoveryRef.current) return
+    const { userId: uId, patientId: pId } = activeRecoveryRef.current
+    try {
+      setLoading(true)
+      setRecovering(true)
+      const { blob, filename } = await fetchDischargeSummaryDocx(uId, pId)
+      if (blob && blob.size > 0) {
+        try {
+          localStorage.removeItem(PENDING_JOB_KEY)
+        } catch {}
+        activeRecoveryRef.current = null
+        setRecovering(false)
+        setLoading(false)
+        update({
+          patientId: pId,
+          filename: filename || 'discharge-summary.docx',
+        })
+        navigate(editSummaryPath(uId, pId))
+        return
+      }
+    } catch {
       setLoading(false)
+      setRecovering(false)
+      setError('Document is still being prepared by AI. Please wait a few moments and try again.')
     }
   }
 
@@ -820,16 +1012,122 @@ export default function HomePage() {
             </div>
           )}
 
+          {/* Recovered Previous Summary Banner */}
+          {recoveredJob && !loading && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-emerald-950">
+                    Your previous discharge summary is ready!
+                  </h4>
+                  <p className="text-xs text-emerald-700 mt-0.5">
+                    Completed in the background while you were away.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.removeItem(PENDING_JOB_KEY)
+                    } catch {}
+                    update({
+                      patientId: recoveredJob.patientId,
+                      filename: recoveredJob.filename,
+                    })
+                    navigate(editSummaryPath(userId, recoveredJob.patientId))
+                  }}
+                  className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-all active:scale-95"
+                >
+                  <span>Open in Editor</span>
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.removeItem(PENDING_JOB_KEY)
+                    } catch {}
+                    setRecoveredJob(null)
+                  }}
+                  className="cursor-pointer p-1.5 text-emerald-600 hover:text-emerald-800 rounded-lg hover:bg-emerald-100/60 transition-colors"
+                  title="Dismiss"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Loading Extraction Panel */}
           {loading && (
             <LoadingPanel
-              title="Creating your discharge…"
-              message="This can take up to 2 minutes. Please keep this tab open."
+              title={
+                recovering || uploadPhase === 'recovering'
+                  ? "Reconnecting to server..."
+                  : uploadPhase === 'processing'
+                    ? "AI is synthesizing discharge summary..."
+                    : uploadProgress > 0
+                      ? `Uploading documents to cloud (${uploadProgress}%)...`
+                      : "Uploading documents to cloud..."
+              }
+              message={
+                recovering || uploadPhase === 'recovering'
+                  ? "AI generation is running in the background. Checking server for completed document..."
+                  : uploadPhase === 'processing'
+                    ? "Upload complete! Safe to switch apps or minimize — generation is running in the cloud."
+                    : "Transmitting clinical records (keep screen open for a moment)..."
+              }
+              warning={
+                recovering || uploadPhase === 'recovering'
+                  ? "Please do not re-upload your files. Your document is being finalized."
+                  : undefined
+              }
             />
           )}
 
-          {/* Error Alert */}
-          <ErrorAlert message={error} onDismiss={() => setError(null)} />
+          {/* Error Alert with Contextual Action (Retry Upload vs Check if Ready) */}
+          <div className="space-y-2">
+            <ErrorAlert message={error} onDismiss={() => { setError(null); setIsUploadInterrupted(false); }} />
+            {error && isUploadInterrupted && !loading && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 px-4 py-2 text-xs font-semibold text-white transition-all active:scale-95 shadow-sm"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Tap to Re-Send (Files Preserved)</span>
+                </button>
+              </div>
+            )}
+            {error && !isUploadInterrupted && activeRecoveryRef.current && !loading && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleManualCheckReady}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white transition-all active:scale-95 shadow-xs"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Check if Ready</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Action & Generate Bar */}
           {!loading && (
