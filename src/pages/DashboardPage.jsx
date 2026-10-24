@@ -291,7 +291,7 @@ export default function DashboardPage() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center">
-                  <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 leading-none whitespace-nowrap">
+                  <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 leading-tight">
                     Discharge <span className="text-teal-600 font-extrabold">Summary</span>
                   </h1>
                 </div>

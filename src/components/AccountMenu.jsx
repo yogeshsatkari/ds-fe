@@ -72,90 +72,89 @@ export default function AccountMenu({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-2xl border border-slate-100 bg-white shadow-xl ring-1 ring-slate-900/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-          {/* Account Profile Header */}
-          <div className="border-b border-slate-100 bg-slate-50/70 p-3.5 sm:p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-teal-700 text-xl font-bold shadow-2xs">
+        <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-2xl border border-slate-200/90 bg-white shadow-xl ring-1 ring-slate-900/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+          {/* Calmed Doctor Account Header */}
+          <div className="flex items-center justify-between border-b border-slate-100/80 bg-slate-50/50 px-3.5 py-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm border border-teal-100/80 shadow-2xs">
                 👨‍⚕️
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-900 truncate">
-                  Doctor Profile
-                </p>
-                <p className="text-[11px] font-mono text-slate-500 truncate">
-                  {displayPhone}
-                </p>
-              </div>
+              </span>
+              <span className="text-xs font-medium text-slate-500 truncate tracking-tight">
+                {displayPhone}
+              </span>
             </div>
           </div>
 
-          {/* Menu Items */}
-          <div className="p-1.5 space-y-0.5">
-            {/* Add or Update Custom Template */}
-            <button
-              type="button"
+          {/* Featured Hero: Sample Discharge Format */}
+          <div className="p-2">
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => {
                 setIsOpen(false)
                 onOpenTemplateManager?.()
               }}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-xs text-slate-700 hover:bg-teal-50/60 hover:text-teal-900 transition-colors text-left"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setIsOpen(false)
+                  onOpenTemplateManager?.()
+                }
+              }}
+              className="group cursor-pointer rounded-xl border border-teal-200/90 bg-gradient-to-br from-teal-50/80 via-white to-emerald-50/40 p-3 shadow-2xs transition-all hover:border-teal-400 hover:shadow-sm"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-600 shrink-0">
-                {currentTemplate.mode === 'custom' ? (
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                )}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white shadow-2xs">
+                    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block leading-tight">
+                      Sample Discharge
+                    </span>
+                    <h4
+                      className="text-xs font-bold text-slate-900 leading-tight truncate mt-0.5"
+                      title={currentTemplate.filename || 'Standard Format'}
+                    >
+                      {currentTemplate.mode === 'custom' && (currentTemplate.filename || currentTemplate.files?.length > 0)
+                        ? currentTemplate.filename || 'Custom Template'
+                        : 'Default Institutional'}
+                    </h4>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold text-teal-700 group-hover:text-teal-900 flex items-center gap-0.5 shrink-0 mt-0.5">
+                  {currentTemplate.mode === 'custom' ? 'Change' : 'Add'} →
+                </span>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-slate-800">
-                  {currentTemplate.mode === 'custom' ? 'Update Sample Discharge' : 'Add Sample Discharge'}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">
-                  {currentTemplate.mode === 'custom'
-                    ? `Sample: ${currentTemplate.filename || 'Sample Discharge'}`
-                    : 'Upload a sample discharge summary'}
-                </p>
-              </div>
-            </button>
+            </div>
+          </div>
 
+          {/* Secondary Actions */}
+          <div className="px-2 pb-2 space-y-0.5 border-t border-slate-100/80 pt-1.5">
             {/* Admin Dashboard if allowed */}
             {isDashboardAllowedUser(userId) && (
               <Link
                 to="/dashboard"
                 onClick={() => setIsOpen(false)}
-                className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-xs text-slate-700 hover:bg-clinical-50/70 hover:text-clinical-900 transition-colors text-left"
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors text-left"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-clinical-50 text-clinical-600 shrink-0">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-slate-800">Analytics Dashboard</p>
-                  <p className="text-[10px] text-slate-400 truncate">Telemetry & metrics</p>
-                </div>
+                <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span>Analytics Dashboard</span>
               </Link>
             )}
-          </div>
 
-          {/* Logout Footer */}
-          <div className="border-t border-slate-100 p-1.5 bg-slate-50/40">
+            {/* Logout */}
             <button
               type="button"
               onClick={handleLogoutClick}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors text-left"
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-600 shrink-0">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </div>
+              <svg className="h-4 w-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
               <span>Logout</span>
             </button>
           </div>
