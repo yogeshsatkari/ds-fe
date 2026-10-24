@@ -4,25 +4,47 @@ import { Link } from 'react-router-dom'
 import { getStoredDoctorPhone, isDashboardAllowedUser } from '../config.js'
 import { downloadDoctorTemplateFile } from '../api/dischargeApi.js'
 import { usePwaInstall } from '../hooks/usePwaInstall.js'
-import InstallPwaModal from './InstallPwaModal.jsx'
 
 export default function AccountMenu({
   userId,
   currentTemplate = { mode: 'standard', filename: '' },
+  isOpen: controlledIsOpen,
+  onOpenChange,
   onOpenTemplateManager,
   onLogout,
 }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const isControlled = controlledIsOpen !== undefined
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen
+  const setIsOpen = (next) => {
+    const val = typeof next === 'function' ? next(isOpen) : next
+    if (isControlled) {
+      onOpenChange?.(val)
+    } else {
+      setInternalIsOpen(val)
+    }
+  }
+
   const [downloading, setDownloading] = useState(false)
-  const [showInstallModal, setShowInstallModal] = useState(false)
+  const [downloadSuccess, setDownloadSuccess] = useState(false)
   const menuRef = useRef(null)
 
   const { canInstall, isInstalled, isIos, isMobile, promptInstall } = usePwaInstall()
 
   const doctorPhone = getStoredDoctorPhone()
   const displayPhone = doctorPhone
-    ? `+91 ••••• •${doctorPhone.slice(-4)}`
-    : `Dr. (${(userId || '').slice(0, 6)}…)`
+    ? `+91 ••••• •${doctorPhone.replace(/\D/g, '').slice(-4)}`
+    : `Doctor Profile`
+
+  const isCustomTemplate = Boolean(
+    currentTemplate?.mode === 'custom' ||
+    Boolean(currentTemplate?.filename) ||
+    Boolean(currentTemplate?.files?.length)
+  )
+
+  const templateName = isCustomTemplate
+    ? currentTemplate?.filename || 'Custom Template'
+    : 'Standard Format'
 
   // Close on Escape key
   useEffect(() => {
@@ -71,6 +93,8 @@ export default function AccountMenu({
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
+        setDownloadSuccess(true)
+        setTimeout(() => setDownloadSuccess(false), 2000)
         return
       }
 
@@ -83,6 +107,8 @@ export default function AccountMenu({
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      setDownloadSuccess(true)
+      setTimeout(() => setDownloadSuccess(false), 2000)
     } catch (err) {
       console.warn('Failed to download template:', err)
       alert(err instanceof Error ? err.message : 'Failed to download template file')
@@ -115,121 +141,137 @@ export default function AccountMenu({
           document.body
         )}
 
-      {/* Trigger Button: Clean Minimalist Avatar */}
+      {/* Trigger Button: Minimal Hamburger / Settings Menu */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`relative ${isOpen ? 'z-50' : ''} flex h-8.5 w-8.5 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-full border transition-all duration-150 shadow-2xs active:scale-95 shrink-0 ${
+        className={`relative ${isOpen ? 'z-50' : ''} flex h-8.5 w-8.5 sm:h-9.5 sm:w-9.5 cursor-pointer items-center justify-center rounded-xl border transition-all duration-150 shadow-2xs active:scale-95 shrink-0 ${
           isOpen
-            ? 'border-teal-500 bg-teal-50 text-teal-700 ring-2 ring-teal-500/20'
-            : 'border-slate-200/90 bg-white text-slate-600 hover:border-teal-400 hover:bg-teal-50/50 hover:text-teal-700'
+            ? 'border-slate-300 bg-slate-100 text-slate-700'
+            : 'border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
         }`}
-        aria-label="Doctor profile menu"
+        aria-label="Account and settings menu"
         aria-expanded={isOpen}
         aria-haspopup="true"
-        title="Doctor Profile"
+        title="Menu"
       >
-        <svg className="h-4.5 w-4.5 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
+        {isOpen ? (
+          <svg className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="17" x2="20" y2="17" />
+          </svg>
+        )}
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-2xl border border-slate-200/90 bg-white shadow-xl ring-1 ring-slate-900/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-          {/* Subtle Doctor Account Header */}
-          <div className="flex items-center gap-1.5 border-b border-slate-100/80 bg-slate-50/40 px-3.5 py-1.5">
-            <span className="text-xs select-none opacity-50 leading-none shrink-0" aria-hidden="true">
-              👨‍⚕️
-            </span>
-            <span className="text-[11px] font-medium text-slate-400 truncate tracking-tight">
-              {displayPhone}
-            </span>
+        <div className="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-2xl border border-slate-200/90 bg-white shadow-xl ring-1 ring-slate-900/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+          {/* Doctor Profile Header */}
+          <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/60 px-4 py-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 font-medium text-xs border border-slate-200/80 shadow-2xs">
+              Dr
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs text-slate-500 font-mono tracking-normal truncate">
+                {displayPhone}
+              </div>
+            </div>
           </div>
 
-          {/* Featured Hero: Sample Discharge Format */}
-          <div className="p-2">
-            <div className="group rounded-xl border border-teal-200/90 bg-gradient-to-br from-teal-50/80 via-white to-emerald-50/40 p-3 shadow-2xs transition-all hover:border-teal-400 hover:shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div
-                  className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+          {/* Sample Discharge Section */}
+          <div className="p-3 border-b border-slate-100">
+            <div className="mb-2 px-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Sample Discharge
+              </span>
+            </div>
+
+            {/* Template Card */}
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-2.5 transition-colors hover:border-slate-300">
+              <div
+                className="flex items-center gap-2.5 cursor-pointer"
+                onClick={() => {
+                  setIsOpen(false)
+                  onOpenTemplateManager?.()
+                }}
+                title="Click to edit template"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 shadow-2xs">
+                  <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-slate-800 truncate" title={templateName}>
+                    {templateName}
+                  </p>
+                </div>
+              </div>
+
+              {/* Direct Quick Actions: Download & Edit */}
+              <div className="mt-2.5 grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/70">
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={downloading || !isCustomTemplate}
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-lg border py-1.5 px-2 text-xs font-medium shadow-2xs transition-all duration-150 cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+                    downloadSuccess
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold'
+                      : downloading
+                        ? 'border-slate-200 bg-slate-50 text-slate-500'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100'
+                  }`}
+                  title={isCustomTemplate ? 'Download active template' : 'Upload a custom template to download'}
+                >
+                  {downloadSuccess ? (
+                    <>
+                      <svg className="h-3.5 w-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Downloaded</span>
+                    </>
+                  ) : downloading ? (
+                    <>
+                      <svg className="h-3.5 w-3.5 text-slate-400 animate-spin shrink-0" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span>Downloading…</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-3.5 w-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span>Download</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false)
                     onOpenTemplateManager?.()
                   }}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1.5 px-2 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition-colors cursor-pointer"
+                  title="Edit or change sample discharge template"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white shadow-2xs">
-                    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {currentTemplate.mode === 'custom' && (currentTemplate.filename || currentTemplate.files?.length > 0) ? (
-                      <>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block leading-tight">
-                          Sample Discharge
-                        </span>
-                        <h4
-                          className="text-xs font-bold text-slate-900 leading-tight truncate mt-0.5"
-                          title={currentTemplate.filename}
-                        >
-                          {currentTemplate.filename || 'Sample Discharge'}
-                        </h4>
-                      </>
-                    ) : (
-                      <h4 className="text-xs font-bold text-slate-900 leading-tight truncate">
-                        Sample Discharge
-                      </h4>
-                    )}
-                  </div>
-                </div>
-
-                {currentTemplate.mode !== 'custom' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOpen(false)
-                      onOpenTemplateManager?.()
-                    }}
-                    className="text-[11px] font-bold text-teal-700 hover:text-teal-900 flex items-center gap-0.5 shrink-0 mt-0.5 cursor-pointer"
-                  >
-                    Add →
-                  </button>
-                )}
+                  <svg className="h-3.5 w-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span>Edit</span>
+                </button>
               </div>
-
-              {/* Direct Quick Actions for Custom Active Template */}
-              {currentTemplate.mode === 'custom' && (
-                <div className="mt-2.5 flex items-center gap-2 border-t border-teal-100/80 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleDownload}
-                    disabled={downloading}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-teal-200/90 bg-white py-1.5 px-2 text-[11px] font-semibold text-teal-700 shadow-2xs hover:bg-teal-50 hover:border-teal-300 transition-all cursor-pointer disabled:opacity-50"
-                    title="Download active sample discharge template"
-                  >
-                    <svg className="h-3.5 w-3.5 text-teal-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span>{downloading ? 'Downloading…' : 'Download'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsOpen(false)
-                      onOpenTemplateManager?.()
-                    }}
-                    className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-teal-200/90 bg-white hover:bg-teal-50 hover:border-teal-300 py-1.5 px-2 text-[11px] font-semibold text-teal-700 shadow-2xs transition-all cursor-pointer"
-                  >
-                    <span>Change</span>
-                    <span aria-hidden="true">→</span>
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Secondary Actions */}
+          {/* Menu Options */}
           <div className="px-2 pb-2 space-y-0.5 border-t border-slate-100/80 pt-1.5">
             {/* Install PWA Option */}
             {!isInstalled && (canInstall || isIos || isMobile) && (
@@ -237,15 +279,11 @@ export default function AccountMenu({
                 type="button"
                 onClick={async () => {
                   setIsOpen(false)
-                  if (canInstall) {
-                    await promptInstall()
-                  } else {
-                    setShowInstallModal(true)
-                  }
+                  await promptInstall()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-teal-700 bg-teal-50/80 hover:bg-teal-100/70 transition-colors text-left"
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors text-left"
               >
-                <svg className="h-4 w-4 text-teal-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 <span>Install App</span>
@@ -257,7 +295,7 @@ export default function AccountMenu({
               <Link
                 to="/dashboard"
                 onClick={() => setIsOpen(false)}
-                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors text-left"
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors text-left"
               >
                 <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -280,15 +318,6 @@ export default function AccountMenu({
           </div>
         </div>
       )}
-
-      {/* Install PWA Modal */}
-      <InstallPwaModal
-        isOpen={showInstallModal}
-        onClose={() => setShowInstallModal(false)}
-        onInstall={promptInstall}
-        isIos={isIos}
-        canInstall={canInstall}
-      />
     </div>
   )
 }
