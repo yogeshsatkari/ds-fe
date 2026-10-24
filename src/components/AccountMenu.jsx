@@ -219,7 +219,7 @@ export default function AccountMenu({
                       setIsOpen(false)
                       onOpenTemplateManager?.()
                     }}
-                    className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-transparent bg-teal-50/70 hover:bg-teal-100/60 py-1.5 px-2 text-[11px] font-semibold text-teal-800 transition-colors cursor-pointer"
+                    className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-teal-200/90 bg-white hover:bg-teal-50 hover:border-teal-300 py-1.5 px-2 text-[11px] font-semibold text-teal-700 shadow-2xs transition-all cursor-pointer"
                   >
                     <span>Change</span>
                     <span aria-hidden="true">→</span>
