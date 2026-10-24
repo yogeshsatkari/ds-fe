@@ -272,18 +272,18 @@ export default function TemplateManagerModal({
         />
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 text-base sm:text-lg shadow-2xs">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+            <span className="hidden sm:flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 text-base sm:text-lg shadow-2xs">
               📄
             </span>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
                 {isCustomActive ? 'Sample Discharge' : 'Add Sample Discharge'}
               </h2>
-              <p className="text-[11px] sm:text-xs text-slate-500 truncate">
+              <p className="text-[11px] sm:text-xs text-slate-500 leading-snug mt-0.5">
                 {isCustomActive
-                  ? 'Sample format used to format generated summaries'
+                  ? 'Used to format new discharge'
                   : 'Upload a sample discharge (.docx, .pdf, or scans)'}
               </p>
             </div>
@@ -292,7 +292,7 @@ export default function TemplateManagerModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors -mr-1 -mt-0.5"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -515,10 +515,7 @@ export default function TemplateManagerModal({
               })()}
 
               {/* Scope Selection: One-off vs Default */}
-              <div className="space-y-2 pt-0.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  How would you like to use this sample?
-                </label>
+              <div className="pt-0.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {/* Option 1: Just for this discharge */}
                   <div

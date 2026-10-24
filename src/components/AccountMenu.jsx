@@ -28,6 +28,20 @@ export default function AccountMenu({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
+  // Close when clicking outside menu within header
+  useEffect(() => {
+    if (!isOpen) return
+
+    function handleOutsidePointerDown(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown)
+  }, [isOpen])
+
   const handleLogoutClick = () => {
     setIsOpen(false)
     if (window.confirm('Log out from this doctor profile on this device?')) {
@@ -42,7 +56,7 @@ export default function AccountMenu({
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed inset-0 z-40 bg-transparent cursor-default select-none"
+            className="fixed inset-0 z-30 bg-transparent cursor-default select-none"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()

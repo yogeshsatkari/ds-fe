@@ -267,7 +267,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-svh bg-slate-50 text-slate-900 pb-12">
       {/* Top Application Navbar */}
-      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-3.5 sm:px-6 lg:px-8">
           <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
             {/* Brand Emblem & App Title (Exact match with Home Page) */}

@@ -614,7 +614,7 @@ export default function HomePage() {
       />
 
       {/* Main Header with Account Menu */}
-      <header className="sticky top-0 z-30 shrink-0 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+      <header className="sticky top-0 z-40 shrink-0 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 sm:h-16 max-w-5xl items-center justify-between px-3.5 sm:px-6">
           {/* Brand Emblem & App Title */}
           <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
