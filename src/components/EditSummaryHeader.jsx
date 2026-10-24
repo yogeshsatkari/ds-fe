@@ -14,13 +14,13 @@ function NewSummaryLink() {
 
 export default function EditSummaryHeader({ downloads = null, showNewSummary = true }) {
   return (
-    <header className="sticky top-0 z-30 shrink-0 border-b border-slate-200/90 bg-white/95 backdrop-blur-xs">
+    <header className="sticky top-0 z-[60] shrink-0 border-b border-slate-200/90 bg-white shadow-xs">
       <div className="mx-auto max-w-7xl px-4 py-2.5 sm:px-6 sm:py-3">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           {/* Row 1 on Mobile: Title on Left, New Summary on Right */}
           <div className="flex items-center justify-between gap-3 min-w-0">
             <h1 className="min-w-0 truncate text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
-              Edit discharge summary
+              Edit discharge
             </h1>
             {showNewSummary && (
               <div className="sm:hidden shrink-0">

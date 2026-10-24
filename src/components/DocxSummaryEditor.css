@@ -17,6 +17,7 @@
 .docx-summary-editor .docx-nav__toggle {
   inset-block-start: 32px !important;
   inset-inline-start: 12px !important;
+  z-index: 40 !important;
 }
 
 @media print {
