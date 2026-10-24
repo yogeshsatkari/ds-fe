@@ -17,7 +17,7 @@ export default function AccountMenu({
   const [showInstallModal, setShowInstallModal] = useState(false)
   const menuRef = useRef(null)
 
-  const { canInstall, isInstalled, isIos, promptInstall } = usePwaInstall()
+  const { canInstall, isInstalled, isIos, isMobile, promptInstall } = usePwaInstall()
 
   const doctorPhone = getStoredDoctorPhone()
   const displayPhone = doctorPhone
@@ -232,7 +232,7 @@ export default function AccountMenu({
           {/* Secondary Actions */}
           <div className="px-2 pb-2 space-y-0.5 border-t border-slate-100/80 pt-1.5">
             {/* Install PWA Option */}
-            {!isInstalled && (canInstall || isIos) && (
+            {!isInstalled && (canInstall || isIos || isMobile) && (
               <button
                 type="button"
                 onClick={() => {
@@ -244,7 +244,7 @@ export default function AccountMenu({
                 <svg className="h-4 w-4 text-teal-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <span>Install Discharge AI</span>
+                <span>Install App</span>
               </button>
             )}
 

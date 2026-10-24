@@ -197,7 +197,7 @@ export default function DoctorAuthCard({
               {authError && <p className="text-xs text-red-500 font-medium">{authError}</p>}
               <button
                 type="submit"
-                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold shadow-md transition cursor-pointer"
+                className="w-full px-4 py-2.5 sm:py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all cursor-pointer flex items-center justify-center text-center"
               >
                 {buttonText}
               </button>
@@ -380,9 +380,10 @@ export default function DoctorAuthCard({
 
               <button
                 type="submit"
-                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold shadow-md transition cursor-pointer mt-2 active:scale-98"
+                className="w-full px-4 py-2.5 sm:py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all cursor-pointer mt-2 active:scale-98 flex items-center justify-center gap-1.5 text-center leading-normal"
               >
-                Start Creating Discharges →
+                <span>Start Creating Discharges</span>
+                <span aria-hidden="true">→</span>
               </button>
             </form>
           </>

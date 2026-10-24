@@ -36,26 +36,10 @@ export default function InstallPwaModal({ isOpen, onClose, onInstall, isIos, can
           </svg>
         </button>
 
-        {/* Brand App Icon & Title */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 text-white shadow-xs">
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M10.5 4.5a1.5 1.5 0 0 0-3 0v4H3.5a1.5 1.5 0 0 0 0 3h4v4a1.5 1.5 0 0 0 3 0v-4h4a1.5 1.5 0 0 0 0-3h-4v-4z"
-                fill="currentColor"
-              />
-              <path
-                d="M18.5 2.5c0 2.2 1.6 3.8 3.8 3.8-2.2 0-3.8 1.6-3.8 3.8 0-2.2-1.6-3.8-3.8-3.8 2.2 0 3.8-1.6 3.8-3.8z"
-                fill="currentColor"
-                className="text-emerald-200"
-              />
-              <circle cx="20" cy="14" r="1" fill="currentColor" opacity="0.85" className="text-cyan-100" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900 leading-tight">Install Discharge AI</h3>
-            <p className="text-xs text-slate-500">Fast, standalone access on your device</p>
-          </div>
+        {/* Clean Header */}
+        <div className="mb-4 pr-7">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">Install App</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Add to home screen for fast full-screen clinical access</p>
         </div>
 
         {/* Platform Guidance */}
@@ -116,7 +100,7 @@ export default function InstallPwaModal({ isOpen, onClose, onInstall, isIos, can
               Got it
             </button>
           </div>
-        ) : (
+        ) : canInstall ? (
           <div className="space-y-4 my-4">
             <p className="text-xs text-slate-600 leading-relaxed">
               Install Discharge AI to launch instantly from your home screen or desktop taskbar with offline shell support.
@@ -133,9 +117,7 @@ export default function InstallPwaModal({ isOpen, onClose, onInstall, isIos, can
               <button
                 type="button"
                 onClick={async () => {
-                  if (canInstall) {
-                    await onInstall()
-                  }
+                  await onInstall()
                   onClose()
                 }}
                 className="flex-1 rounded-xl bg-teal-600 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 transition-colors cursor-pointer"
@@ -143,6 +125,49 @@ export default function InstallPwaModal({ isOpen, onClose, onInstall, isIos, can
                 Install Now
               </button>
             </div>
+          </div>
+        ) : (
+          <div className="space-y-3.5 my-4">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Add Discharge AI to your device home screen for fast full-screen access:
+            </p>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2.5 text-xs text-slate-700">
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px]">
+                  1
+                </span>
+                <span>
+                  Tap the browser menu <strong className="text-slate-900">⋮</strong> (three dots in top-right).
+                </span>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px]">
+                  2
+                </span>
+                <span>
+                  Choose <strong className="text-slate-900">Install app</strong> or <strong className="text-slate-900">Add to Home screen</strong>.
+                </span>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-bold text-[11px]">
+                  3
+                </span>
+                <span>
+                  Confirm by tapping <strong className="text-teal-700">Install</strong>.
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-xl bg-slate-900 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors cursor-pointer mt-3"
+            >
+              Got it
+            </button>
           </div>
         )}
       </div>

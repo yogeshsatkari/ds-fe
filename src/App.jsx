@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import HomePage from './pages/HomePage.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
+import PwaInstallBanner from './components/PwaInstallBanner.jsx'
 
 const EditPage = lazy(() => import('./pages/EditPage.jsx'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'))
@@ -29,6 +30,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <OfflineBanner />
+      <PwaInstallBanner />
       <Suspense fallback={<PageSuspenseFallback />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
