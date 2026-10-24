@@ -643,7 +643,7 @@ export default function HomePage() {
         setRecovering(false)
         setUploadPhase('idle')
         setIsUploadInterrupted(true)
-        setError('Upload was interrupted when you switched apps. Your selected files are still preserved.')
+        setError('Session paused when leaving the app. Your selected pages are still saved.')
       } else {
         // Files were uploaded successfully; connection dropped while waiting for AI synthesis
         const isNetworkDrop =
@@ -706,7 +706,7 @@ export default function HomePage() {
     // Polling timeout: keep activeRecoveryRef so doctor can manually click "Check if Ready"
     setRecovering(false)
     setLoading(false)
-    setError('Generation is taking a little longer than usual. The server is still finalizing your document in the background.')
+    setError('Taking slightly longer than usual for detailed records. Still finalizing your document in the background.')
   }
 
   const handleManualCheckReady = async () => {
@@ -733,7 +733,7 @@ export default function HomePage() {
     } catch {
       setLoading(false)
       setRecovering(false)
-      setError('Document is still being prepared by AI. Please wait a few moments and try again.')
+      setError('Document is still being prepared. Please wait a few moments and try again.')
     }
   }
 
@@ -1074,24 +1074,19 @@ export default function HomePage() {
             <LoadingPanel
               title={
                 recovering || uploadPhase === 'recovering'
-                  ? "Reconnecting to server..."
+                  ? "Still creating your summary..."
                   : uploadPhase === 'processing'
-                    ? "AI is synthesizing discharge summary..."
+                    ? "Creating discharge summary..."
                     : uploadProgress > 0
-                      ? `Uploading documents to cloud (${uploadProgress}%)...`
-                      : "Uploading documents to cloud..."
+                      ? `Reading documents (${uploadProgress}%)...`
+                      : "Reading documents..."
               }
               message={
                 recovering || uploadPhase === 'recovering'
-                  ? "AI generation is running in the background. Checking server for completed document..."
+                  ? "Checking if your document is ready..."
                   : uploadPhase === 'processing'
-                    ? "Upload complete! Generation is running in background..."
-                    : "Keep screen open for a moment (Uploading documents)..."
-              }
-              warning={
-                recovering || uploadPhase === 'recovering'
-                  ? "Discharge is being created. This can take upto 2 minutes"
-                  : undefined
+                    ? "Analyzing records. This usually takes 1–2 minutes..."
+                    : "Please keep the app open..."
               }
             />
           )}
@@ -1109,7 +1104,7 @@ export default function HomePage() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  <span>Tap to Re-Send (Files Preserved)</span>
+                  <span>Tap to Resume (Pages Saved)</span>
                 </button>
               </div>
             )}
