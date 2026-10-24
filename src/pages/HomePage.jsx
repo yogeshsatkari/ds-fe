@@ -1200,6 +1200,7 @@ export default function HomePage() {
               loading={patientsLoading}
               error={patientsError}
               onSelect={handleOpenPatient}
+              userId={userId}
             />
           )}
         </section>

@@ -7,6 +7,7 @@ import LoadingPanel from './LoadingPanel.jsx'
 import ErrorAlert from './ErrorAlert.jsx'
 import { useDocumentPlaceholderHighlight } from '../hooks/useDocumentPlaceholderHighlight.js'
 import { downloadBlob } from '../utils/downloadBlob.js'
+import { shareDischargeSummary } from '../utils/shareUtils.js'
 import './DocxSummaryEditor.css'
 
 const DOCX_MIME =
@@ -120,6 +121,19 @@ export default function DocxSummaryEditor({
     }
   }
 
+  const handleShare = async () => {
+    const cleanName = fileName
+      ?.replace(/^discharge-summary-?|\.docx$/gi, '')
+      ?.replace(/[-_]/g, ' ')
+      ?.trim()
+
+    return await shareDischargeSummary({
+      userId,
+      patientId,
+      patientName: cleanName || undefined,
+    })
+  }
+
   if (loading) {
     return (
       <LoadingPanel
@@ -137,6 +151,7 @@ export default function DocxSummaryEditor({
     <DownloadActions
       onDownloadDocx={handleDownloadDocx}
       onDownloadPdf={handleDownloadPdf}
+      onShare={userId && patientId ? handleShare : null}
       downloading={downloading}
       convertingPdf={convertingPdf}
       disabled={!documentBytes}

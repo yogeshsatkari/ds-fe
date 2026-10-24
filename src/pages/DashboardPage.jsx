@@ -16,6 +16,7 @@ import DoctorAuthCard from '../components/DoctorAuthCard.jsx'
 import AccountMenu from '../components/AccountMenu.jsx'
 import TemplateManagerModal from '../components/TemplateManagerModal.jsx'
 import { getDoctorTemplate } from '../utils/templateStorage.js'
+import { shareDischargeSummary } from '../utils/shareUtils.js'
 
 function formatTokensCompact(num) {
   if (num == null) return '—'
@@ -60,6 +61,23 @@ export default function DashboardPage() {
   })
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
+  const [copiedPatientId, setCopiedPatientId] = useState(null)
+
+  const handleSharePatient = async (patient) => {
+    const targetUserId = patient.user_id || userId || getStoredUserId()
+    const result = await shareDischargeSummary({
+      userId: targetUserId,
+      patientId: patient.patient_id,
+      patientName: patient.patient_name?.trim() || undefined,
+    })
+
+    if (result?.success) {
+      setCopiedPatientId(patient.patient_id)
+      setTimeout(() => {
+        setCopiedPatientId((curr) => (curr === patient.patient_id ? null : curr))
+      }, 2500)
+    }
+  }
 
   useEffect(() => {
     if (userId) {
@@ -720,6 +738,44 @@ export default function DashboardPage() {
                             >
                               Telemetry
                             </button>
+
+                            {/* Share Summary Link */}
+                            {patient.has_summary !== false && (
+                              <button
+                                type="button"
+                                onClick={() => handleSharePatient(patient)}
+                                className={`cursor-pointer inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                  copiedPatientId === patient.patient_id
+                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-2xs'
+                                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                                }`}
+                                title="Share summary link via WhatsApp, Telegram, or copy link"
+                              >
+                                {copiedPatientId === patient.patient_id ? (
+                                  <>
+                                    <svg className="h-3 w-3 text-emerald-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                    <span>Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="h-3 w-3 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <circle cx="18" cy="5" r="3" />
+                                      <circle cx="6" cy="12" r="3" />
+                                      <circle cx="18" cy="19" r="3" />
+                                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                                    </svg>
+                                    <span>Share</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
 
                             {/* Open Document Editor */}
                             {patient.has_summary !== false && (
