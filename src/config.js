@@ -31,9 +31,23 @@ export function generateUserUuid(phone, pin) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`
 }
 
+export const AUTH_VERSION = 'v2'
+
 export function getStoredUserId() {
   if (typeof window === 'undefined') return null
-  return localStorage.getItem('user_id') || null
+
+  const userId = localStorage.getItem('user_id')
+  const phone = localStorage.getItem('doctor_phone')
+  const version = localStorage.getItem('auth_version')
+
+  // Invalidate legacy sessions: requires doctor_phone and current auth_version
+  // Flushes immediately in 0ms on page load without waiting for Render backend wake-up.
+  if (userId && (!phone || version !== AUTH_VERSION)) {
+    clearDoctorAuth()
+    return null
+  }
+
+  return userId || null
 }
 
 export function getStoredDoctorPhone() {
@@ -48,6 +62,7 @@ export function saveDoctorAuth(phone, pin) {
     if (phone) {
       localStorage.setItem('doctor_phone', phone.replace(/\D/g, '').slice(-10))
     }
+    localStorage.setItem('auth_version', AUTH_VERSION)
   }
   return userId
 }
@@ -56,6 +71,7 @@ export function clearDoctorAuth() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('user_id')
     localStorage.removeItem('doctor_phone')
+    localStorage.removeItem('auth_version')
   }
 }
 
