@@ -446,13 +446,21 @@ export default function TemplateManagerModal({
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
-                        {isImage && (
+                        {isImage ? (
                           <button
                             type="button"
                             onClick={handleTriggerAddMore}
                             className="text-xs font-medium text-teal-700 hover:text-teal-900 cursor-pointer transition-colors"
                           >
                             + Add page
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleTriggerReplace}
+                            className="text-xs font-medium text-teal-700 hover:text-teal-900 underline cursor-pointer transition-colors"
+                          >
+                            Change
                           </button>
                         )}
                         <button
