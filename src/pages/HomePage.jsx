@@ -758,7 +758,7 @@ export default function HomePage() {
                       <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
-                      <span>Upload Documents</span> 
+                      <span>Upload Documents</span>
                     </button>
                   </div>
                 ) : (
