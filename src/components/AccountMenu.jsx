@@ -235,9 +235,13 @@ export default function AccountMenu({
             {!isInstalled && (canInstall || isIos || isMobile) && (
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setIsOpen(false)
-                  setShowInstallModal(true)
+                  if (canInstall) {
+                    await promptInstall()
+                  } else {
+                    setShowInstallModal(true)
+                  }
                 }}
                 className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-teal-700 bg-teal-50/80 hover:bg-teal-100/70 transition-colors text-left"
               >
