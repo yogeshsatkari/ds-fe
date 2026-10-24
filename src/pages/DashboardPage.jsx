@@ -267,34 +267,52 @@ export default function DashboardPage() {
   return (
     <div className="min-h-svh bg-slate-50 text-slate-900 pb-12">
       {/* Top Application Navbar */}
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-xs">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-clinical-600 text-white font-bold text-sm shadow-xs">
-                  DS
-                </div>
-                <div>
-                  <h1 className="text-base font-semibold tracking-tight text-slate-900 leading-none">
-                    Clinical AI Portal
-                  </h1>
-                  <span className="text-xs text-slate-500">Telemetry & Discharge Digitization</span>
-                </div>
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto max-w-7xl px-3.5 sm:px-6 lg:px-8">
+          <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
+            {/* Brand Emblem & App Title (Exact match with Home Page) */}
+            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+              <div className="flex h-8.5 w-8.5 sm:h-9.5 sm:w-9.5 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 text-white shadow-xs ring-1 ring-teal-500/25">
+                <svg className="h-4.5 w-4.5 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none">
+                  {/* Rounded Swiss Medical Cross */}
+                  <path
+                    d="M10.5 4.5a1.5 1.5 0 0 0-3 0v4H3.5a1.5 1.5 0 0 0 0 3h4v4a1.5 1.5 0 0 0 3 0v-4h4a1.5 1.5 0 0 0 0-3h-4v-4z"
+                    fill="currentColor"
+                  />
+                  {/* 4-Point AI Sparkle */}
+                  <path
+                    d="M18.5 2.5c0 2.2 1.6 3.8 3.8 3.8-2.2 0-3.8 1.6-3.8 3.8 0-2.2-1.6-3.8-3.8-3.8 2.2 0 3.8-1.6 3.8-3.8z"
+                    fill="currentColor"
+                    className="text-emerald-200"
+                  />
+                  {/* Micro Accent Spark */}
+                  <circle cx="20" cy="14" r="1" fill="currentColor" opacity="0.85" className="text-cyan-100" />
+                </svg>
               </div>
-
-           
+              <div className="min-w-0">
+                <div className="flex items-center">
+                  <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 leading-none whitespace-nowrap">
+                    Discharge <span className="text-teal-600 font-extrabold">Summary</span>
+                  </h1>
+                </div>
+                <p className="hidden sm:block text-xs text-slate-500 truncate mt-1">
+                  Clinical analytics, telemetry & performance metrics
+                </p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Right: New Discharge CTA & Profile */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <Link
                 to="/"
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-clinical-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-clinical-700 transition-colors shadow-xs"
+                className="inline-flex cursor-pointer items-center gap-1 sm:gap-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold text-white transition-all shadow-sm shadow-teal-700/20 active:scale-98 whitespace-nowrap"
+                title="Create New Discharge Summary"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.25">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                <span>New Discharge</span>
+                <span className="sm:hidden">New</span>
+                <span className="hidden sm:inline">New Discharge</span>
               </Link>
 
               <AccountMenu

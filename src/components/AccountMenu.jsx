@@ -55,10 +55,10 @@ export default function AccountMenu({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-full border transition-all duration-150 shadow-2xs active:scale-95 shrink-0 ${
+        className={`relative flex h-8.5 w-8.5 sm:h-9 sm:w-9 cursor-pointer items-center justify-center rounded-xl border transition-all duration-150 shadow-2xs active:scale-95 shrink-0 ${
           isOpen
-            ? 'border-clinical-500 bg-clinical-50/70 text-clinical-700 ring-2 ring-clinical-500/20'
-            : 'border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
+            ? 'border-teal-500 bg-teal-50 text-teal-700 ring-2 ring-teal-500/20'
+            : 'border-slate-200/80 bg-slate-50/70 text-slate-700 hover:border-teal-400 hover:bg-teal-50/50 hover:text-teal-700'
         }`}
         aria-label="Doctor profile menu"
         aria-expanded={isOpen}

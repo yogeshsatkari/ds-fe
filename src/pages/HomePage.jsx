@@ -614,11 +614,11 @@ export default function HomePage() {
       />
 
       {/* Main Header with Account Menu */}
-      <header className="sticky top-0 z-30 shrink-0 border-b border-slate-200/90 bg-white/95 backdrop-blur-xs">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 sm:h-16 max-w-5xl items-center justify-between px-3.5 sm:px-6">
           {/* Brand Emblem & App Title */}
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-clinical-700 via-teal-600 to-cyan-500 text-white shadow-xs ring-1 ring-white/20">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="flex h-8.5 w-8.5 sm:h-9.5 sm:w-9.5 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 text-white shadow-xs ring-1 ring-teal-500/25">
               <svg className="h-4.5 w-4.5 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none">
                 {/* Rounded Swiss Medical Cross */}
                 <path
@@ -629,24 +629,20 @@ export default function HomePage() {
                 <path
                   d="M18.5 2.5c0 2.2 1.6 3.8 3.8 3.8-2.2 0-3.8 1.6-3.8 3.8 0-2.2-1.6-3.8-3.8-3.8 2.2 0 3.8-1.6 3.8-3.8z"
                   fill="currentColor"
-                  className="text-cyan-200"
+                  className="text-emerald-200"
                 />
                 {/* Micro Accent Spark */}
                 <circle cx="20" cy="14" r="1" fill="currentColor" opacity="0.85" className="text-cyan-100" />
               </svg>
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 leading-tight truncate">
-                  Discharge Summary
+              <div className="flex items-center">
+                <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 leading-none whitespace-nowrap">
+                  Discharge <span className="text-teal-600 font-extrabold">Summary</span>
                 </h1>
-                <span className="hidden xs:inline-flex items-center rounded-full bg-teal-50 px-1.5 py-0.5 text-[9px] font-semibold text-teal-700 border border-teal-200/60 shrink-0">
-                  AI
-                </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 truncate">
-                <span className="sm:hidden">Clinical summary digitizer</span>
-                <span className="hidden sm:inline">Upload clinical notes to create a verified discharge summary</span>
+              <p className="hidden sm:block text-xs text-slate-500 truncate mt-1">
+                Upload clinical notes to create a verified discharge summary
               </p>
             </div>
           </div>
@@ -691,23 +687,25 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Box Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-3.5">
+              {/* Box Header (Responsive, avoids truncation on mobile) */}
+              <div className="flex items-center justify-between border-b border-slate-100 px-3.5 py-2.5 sm:px-5 sm:py-3.5">
                 <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-clinical-100 text-xs font-bold text-clinical-700">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-xs font-bold text-teal-700 border border-teal-200/60 shadow-2xs">
                     1
                   </span>
                   <div className="min-w-0">
-                    <h3 className="text-xs sm:text-sm font-semibold text-slate-900 leading-none truncate">
-                      Patient Clinical Records
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-none truncate">
+                      <span className="sm:hidden">Patient Records</span>
+                      <span className="hidden sm:inline">Patient Clinical Records</span>
                     </h3>
                     <span className="text-[10px] sm:text-[11px] text-slate-400 truncate block mt-0.5">
-                      Notes, charts, labs & clinical documents
+                      <span className="sm:hidden">Notes, charts & reports</span>
+                      <span className="hidden sm:inline">Notes, charts, labs & clinical documents</span>
                     </span>
                   </div>
                 </div>
-                <span className="rounded-full bg-slate-100 px-2 sm:px-2.5 py-0.5 text-[11px] sm:text-xs font-medium text-slate-600 shrink-0 ml-2">
-                  {files.length} / {MAX_FILES} files
+                <span className="rounded-full bg-slate-100 border border-slate-200/60 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-semibold text-slate-600 shrink-0 ml-2">
+                  {files.length} / {MAX_FILES}
                 </span>
               </div>
 
@@ -727,23 +725,23 @@ export default function HomePage() {
                     }}
                     className="flex cursor-pointer flex-col items-center justify-center p-8 text-center sm:p-12 flex-1"
                   >
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-clinical-50 text-clinical-600 shadow-2xs transition-transform hover:scale-105">
-                      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                    <div className="flex h-13 w-13 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50/70 border border-teal-100/80 text-teal-600 shadow-2xs transition-transform hover:scale-105">
+                      <svg className="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                     </div>
 
-                    <h4 className="mt-4 text-base font-semibold text-slate-800">
+                    <h4 className="mt-3.5 text-sm sm:text-base font-bold text-slate-900 tracking-tight">
                       {optimizing ? 'Optimizing documents…' : 'Drop patient records here'}
                     </h4>
-                    <p className="mt-1 max-w-xs text-xs text-slate-500">
+                    <p className="mt-1 max-w-xs text-xs text-slate-500 leading-relaxed font-normal">
                       Case sheets, doctor notes, labs or discharge reports
                     </p>
 
-                    <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">JPG</span>
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PNG</span>
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-600">PDF</span>
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-semibold text-slate-500">
+                      <span className="rounded-md bg-slate-100/90 border border-slate-200/60 px-2 py-0.5">JPG</span>
+                      <span className="rounded-md bg-slate-100/90 border border-slate-200/60 px-2 py-0.5">PNG</span>
+                      <span className="rounded-md bg-slate-100/90 border border-slate-200/60 px-2 py-0.5">PDF</span>
                     </div>
 
                     <button
@@ -753,9 +751,9 @@ export default function HomePage() {
                         fileInputRef.current?.click()
                       }}
                       disabled={optimizing}
-                      className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-clinical-600 px-4 py-2 sm:px-5 sm:py-2.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-clinical-700 active:scale-98 whitespace-nowrap"
+                      className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 px-4 py-2 sm:px-5 sm:py-2.5 text-xs font-semibold text-white shadow-sm shadow-teal-700/20 transition-all active:scale-98 whitespace-nowrap"
                     >
-                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.25">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
                       <span>Upload Documents</span>
@@ -885,9 +883,19 @@ export default function HomePage() {
                 type="button"
                 onClick={handleGenerate}
                 disabled={!canGenerate}
-                className="inline-flex w-full sm:w-auto cursor-pointer items-center justify-center gap-2 rounded-xl bg-clinical-600 px-5 sm:px-6 py-3 sm:py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-clinical-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 active:scale-98 whitespace-nowrap"
+                className={`inline-flex w-full sm:w-auto cursor-pointer items-center justify-center gap-2 rounded-xl px-5 sm:px-6 py-3 text-sm font-semibold transition-all active:scale-98 whitespace-nowrap ${
+                  canGenerate
+                    ? 'bg-gradient-to-r from-teal-600 via-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-sm shadow-teal-700/25 hover:shadow-md'
+                    : 'bg-slate-100 text-slate-400 border border-slate-200/80 cursor-not-allowed shadow-none'
+                }`}
               >
-                <svg className="h-4.5 w-4.5 text-clinical-100 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg
+                  className={`h-4.5 w-4.5 shrink-0 ${canGenerate ? 'text-teal-200 animate-pulse' : 'text-slate-400'}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
                 </svg>
                 <span>
