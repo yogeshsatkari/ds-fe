@@ -182,7 +182,7 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
           {!metrics ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
               <p className="text-sm font-medium text-amber-900">
-                Telemetry record not found for this extraction.
+                Metrics record not found for this extraction.
               </p>
               <p className="mt-1 text-xs text-amber-700">
                 This discharge summary may have been created before metrics recording was enabled.

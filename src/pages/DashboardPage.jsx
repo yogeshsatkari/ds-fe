@@ -300,7 +300,7 @@ export default function DashboardPage() {
     return (
       <DoctorAuthCard
         title="Admin Sign In"
-        description="Enter your mobile number and 4-digit PIN to access telemetry and analytics."
+        description="Enter your mobile number and 4-digit PIN to access metrics and analytics."
         buttonText="Access Dashboard →"
         showBackHome={true}
         onAuthSuccess={(newId) => {
@@ -356,7 +356,7 @@ export default function DashboardPage() {
                   </h1>
                 </div>
                 <p className="hidden sm:block text-xs text-slate-500 truncate mt-1">
-                  Clinical analytics, telemetry & performance metrics
+                  Analytics, token & cost metrics
                 </p>
               </div>
             </div>
@@ -801,14 +801,14 @@ export default function DashboardPage() {
                         {/* 8. Actions */}
                         <td className="px-4 py-3.5 text-right">
                           <div className="inline-flex items-center gap-1.5">
-                            {/* Inspect Telemetry */}
+                            {/* Inspect Metrics */}
                             <button
                               type="button"
                               onClick={() => handleOpenTelemetry(patient)}
                               className="cursor-pointer rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                              title="Inspect AI processing and token telemetry"
+                              title="Inspect AI processing and token metrics"
                             >
-                              Telemetry
+                              Metrics
                             </button>
 
                             {/* Share Summary Link */}
