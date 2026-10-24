@@ -18,6 +18,33 @@ function formatCostUsd(val) {
   return `$${Number(val).toFixed(4)}`
 }
 
+function formatCreatedDateTime(dateStr) {
+  if (!dateStr) return null
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return String(dateStr)
+    const datePart = d.toLocaleDateString('en-GB', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+    const str = String(dateStr)
+    const hasTime = str.includes(':') || str.includes('T')
+    const timePart = hasTime
+      ? d.toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      : null
+    return timePart ? `${datePart}, ${timePart}` : datePart
+  } catch {
+    return String(dateStr)
+  }
+}
+
 export default function TelemetryModal({ patient, metrics, userId, isOpen, onClose }) {
   const [templateMd, setTemplateMd] = useState(null)
   const [loadingTemplate, setLoadingTemplate] = useState(false)
@@ -49,6 +76,14 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
   const modelName = summary.model || metrics?.model || 'gemini-2.5-flash'
   const status = metrics?.status || summary.status || (patient.has_summary ? 'completed' : 'pending')
   const isFailed = status === 'failed'
+
+  const rawDate =
+    patient.date_created ||
+    patient.created_at ||
+    patient.updated_at ||
+    summary.created_at ||
+    metrics?.created_at
+  const createdStr = formatCreatedDateTime(rawDate)
 
   const handleToggleTemplate = async () => {
     if (showTemplate) {
@@ -121,6 +156,11 @@ export default function TelemetryModal({ patient, metrics, userId, isOpen, onClo
               {patient.discharge_type && (
                 <span className="ml-2 uppercase tracking-wide">
                   · {patient.discharge_type} pipeline
+                </span>
+              )}
+              {createdStr && (
+                <span className="ml-2">
+                  · Created: <span className="text-slate-700 font-medium">{createdStr}</span>
                 </span>
               )}
             </p>

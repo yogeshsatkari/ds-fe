@@ -35,6 +35,33 @@ function formatCostUsd(val) {
   return `$${Number(val).toFixed(3)}`
 }
 
+function formatCreatedDateTime(dateStr) {
+  if (!dateStr) return null
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return { date: String(dateStr), time: null }
+    const date = d.toLocaleDateString('en-GB', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+    const str = String(dateStr)
+    const hasTime = str.includes(':') || str.includes('T')
+    const time = hasTime
+      ? d.toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      : null
+    return { date, time }
+  } catch {
+    return { date: String(dateStr), time: null }
+  }
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [userId, setUserId] = useState(getStoredUserId)
@@ -233,7 +260,21 @@ export default function DashboardPage() {
         const mB = metricsMap[b.patient_id]
 
         if (sortBy === 'newest') {
-          return new Date(b.updated_at || 0) - new Date(a.updated_at || 0)
+          const dateA = new Date(
+            a.date_created ||
+            a.created_at ||
+            a.updated_at ||
+            mA?.summary?.created_at ||
+            0
+          )
+          const dateB = new Date(
+            b.date_created ||
+            b.created_at ||
+            b.updated_at ||
+            mB?.summary?.created_at ||
+            0
+          )
+          return dateB - dateA
         }
         if (sortBy === 'cost_high') {
           const costA = mA?.summary?.total_cost_inr || 0
@@ -538,6 +579,7 @@ export default function DashboardPage() {
               <thead className="bg-slate-50 font-semibold text-slate-700">
                 <tr>
                   <th className="px-4 py-3.5">Patient Details</th>
+                  <th className="px-4 py-3.5 whitespace-nowrap">Discharge Created</th>
                   <th className="px-4 py-3.5">Admission / Stay</th>
                   <th className="px-4 py-3.5">Pipeline Format</th>
                   <th className="px-4 py-3.5 text-center">Pages</th>
@@ -556,6 +598,10 @@ export default function DashboardPage() {
                       <td className="px-4 py-4">
                         <div className="h-4 w-32 rounded bg-slate-200" />
                         <div className="mt-1.5 h-3 w-20 rounded bg-slate-100" />
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="h-4 w-20 rounded bg-slate-200" />
+                        <div className="mt-1.5 h-3 w-14 rounded bg-slate-100" />
                       </td>
                       <td className="px-4 py-4">
                         <div className="h-3 w-24 rounded bg-slate-100" />
@@ -583,7 +629,7 @@ export default function DashboardPage() {
                 ) : filteredPatients.length === 0 ? (
                   // Empty State
                   <tr>
-                    <td colSpan="8" className="px-6 py-14 text-center">
+                    <td colSpan="9" className="px-6 py-14 text-center">
                       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                         📋
                       </div>
@@ -621,6 +667,14 @@ export default function DashboardPage() {
 
                     const isCustom = patient.discharge_type === 'custom'
 
+                    const rawDate =
+                      patient.date_created ||
+                      patient.created_at ||
+                      patient.updated_at ||
+                      summary.created_at ||
+                      metrics?.created_at
+                    const createdInfo = formatCreatedDateTime(rawDate)
+
                     return (
                       <tr key={patient.patient_id} className="hover:bg-slate-50/70 transition-colors">
                         {/* 1. Patient Details */}
@@ -642,7 +696,25 @@ export default function DashboardPage() {
                           </div>
                         </td>
 
-                        {/* 2. Admission / Stay */}
+                        {/* 2. Discharge Created */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          {createdInfo ? (
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-800 text-xs">
+                                {createdInfo.date}
+                              </span>
+                              {createdInfo.time && (
+                                <span className="text-[11px] text-slate-500">
+                                  {createdInfo.time}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+
+                        {/* 3. Admission / Stay */}
                         <td className="px-4 py-3.5 text-slate-600">
                           {patient.date_of_admission || patient.date_of_discharge ? (
                             <div className="text-[11px] flex items-center gap-1">
