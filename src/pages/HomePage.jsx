@@ -67,7 +67,7 @@ function DocumentLightboxModal({ file, index, total, onClose, onRemove, onNext, 
         className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         {/* Header */}
-        <div className="border-b border-slate-200 bg-white px-3.5 py-2.5 sm:px-5 sm:py-3 space-y-1.5">
+        <div className="border-b border-slate-200 bg-white px-3.5 py-2.5 sm:px-5 sm:py-3">
           {/* Top Control Bar: Page Badge (Left) + Actions (Right) */}
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex h-5.5 sm:h-6 items-center rounded-full bg-clinical-50 border border-clinical-200 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-clinical-700">
@@ -101,31 +101,18 @@ function DocumentLightboxModal({ file, index, total, onClose, onRemove, onNext, 
               </button>
             </div>
           </div>
-
-          {/* Heading: Filename & Details */}
-          <div className="flex items-baseline justify-between gap-2 min-w-0">
-            <h2 className="truncate text-xs sm:text-sm font-semibold text-slate-900 min-w-0" title={file.name}>
-              {file.name}
-            </h2>
-            <span className="text-[10px] sm:text-[11px] text-slate-400 shrink-0 font-normal">
-              {formatBytes(file.size)} · {isPdf ? 'PDF' : 'Image'}
-            </span>
-          </div>
         </div>
 
         {/* Viewport */}
         <div className="relative flex min-h-[50vh] flex-1 items-center justify-center overflow-auto bg-slate-100 p-4">
           {isPdf ? (
-            <div className="flex flex-col items-center justify-center text-center p-8">
+            <div className="flex flex-col items-center justify-center text-center p-8 max-w-sm">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-red-200 bg-red-100 text-red-600 shadow-sm">
                 <svg className="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h4 className="mt-3 text-base font-semibold text-slate-800">{file.name}</h4>
-              <p className="mt-1 max-w-sm text-xs text-slate-500">
-                Multi-page PDF document ({formatBytes(file.size)}). All pages will be extracted by Gemini OCR in sequential order.
-              </p>
+              <h4 className="mt-3 text-sm sm:text-base font-semibold text-slate-800 break-all">{file.name}</h4>
             </div>
           ) : previewUrl ? (
             <img
@@ -879,22 +866,24 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Box Header (Responsive, avoids truncation on mobile) */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-3.5 py-2.5 sm:px-5 sm:py-3.5">
-                <div className="min-w-0">
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-none truncate">
-                    <span className="sm:hidden">Patient Records</span>
-                    <span className="hidden sm:inline">Patient Clinical Records</span>
-                  </h3>
-                  <span className="text-[10px] sm:text-[11px] text-slate-400 truncate block mt-0.5">
-                    <span className="sm:hidden">Notes, charts & reports</span>
-                    <span className="hidden sm:inline">Notes, charts, labs & clinical documents</span>
+              {/* Box Header (Only shown when files are uploaded) */}
+              {files.length > 0 && (
+                <div className="flex items-center justify-between border-b border-slate-100 px-3.5 py-2.5 sm:px-5 sm:py-3.5">
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-none truncate">
+                      <span className="sm:hidden">Patient Records</span>
+                      <span className="hidden sm:inline">Patient Clinical Records</span>
+                    </h3>
+                    <span className="text-[10px] sm:text-[11px] text-slate-400 truncate block mt-0.5">
+                      <span className="sm:hidden">Notes, charts & reports</span>
+                      <span className="hidden sm:inline">Notes, charts, labs & clinical documents</span>
+                    </span>
+                  </div>
+                  <span className="rounded-full bg-slate-100 border border-slate-200/60 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-semibold text-slate-600 shrink-0 ml-2">
+                    {files.length} / {MAX_FILES}
                   </span>
                 </div>
-                <span className="rounded-full bg-slate-100 border border-slate-200/60 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-semibold text-slate-600 shrink-0 ml-2">
-                  {files.length} / {MAX_FILES}
-                </span>
-              </div>
+              )}
 
               {/* Box Body */}
               <div className="flex-1 flex flex-col justify-center">
@@ -919,10 +908,10 @@ export default function HomePage() {
                     </div>
 
                     <h4 className="mt-3.5 text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-                      {optimizing ? 'Optimizing documents…' : 'Drop patient records here'}
+                      {optimizing ? 'Optimizing documents…' : 'Upload Patient Records'}
                     </h4>
                     <p className="mt-1 max-w-xs text-xs text-slate-500 leading-relaxed font-normal">
-                      Case sheets, doctor notes, labs or discharge reports
+                      Doctor notes, case sheets, labs or discharge reports
                     </p>
 
                     <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-semibold text-slate-500">
@@ -950,15 +939,6 @@ export default function HomePage() {
                   /* Staged Files Grid */
                   <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                     <div>
-                      <div className="mb-3 flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2.5">
-                        <span className="font-medium text-slate-700">
-                          {files.length} document{files.length === 1 ? '' : 's'} in sequence
-                        </span>
-                        <div className="flex items-center gap-2 sm:gap-2.5 font-mono text-[11px] sm:text-xs text-slate-400">
-                          <span>{formatBytes(totalBytes)} of {MAX_TOTAL_SIZE_MB} MB</span>
-                        </div>
-                      </div>
-
                       <div className="flex flex-wrap gap-2.5 max-h-80 overflow-y-auto pr-1">
                         {files.map((file, index) => (
                           <DocumentSquareTile
@@ -991,17 +971,13 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    {/* Bottom Helper Bar */}
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-[11px] text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <span>💡</span>
-                        <span>Tap any thumbnail to preview full page</span>
-                      </span>
+                    {/* Bottom Action Bar */}
+                    <div className="mt-2.5 flex items-center justify-end border-t border-slate-100 pt-2">
                       <button
                         type="button"
                         onClick={handleClearAll}
                         disabled={optimizing}
-                        className="cursor-pointer text-xs text-slate-400 hover:text-red-600 transition-colors"
+                        className="cursor-pointer text-xs font-medium text-slate-400 hover:text-red-600 transition-colors"
                       >
                         Clear All
                       </button>
