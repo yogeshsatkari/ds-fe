@@ -1085,12 +1085,12 @@ export default function HomePage() {
                 recovering || uploadPhase === 'recovering'
                   ? "AI generation is running in the background. Checking server for completed document..."
                   : uploadPhase === 'processing'
-                    ? "Upload complete! Safe to switch apps or minimize — generation is running in the cloud."
-                    : "Transmitting clinical records (keep screen open for a moment)..."
+                    ? "Upload complete! Generation is running in background..."
+                    : "Keep screen open for a moment (Uploading documents)..."
               }
               warning={
                 recovering || uploadPhase === 'recovering'
-                  ? "Please do not re-upload your files. Your document is being finalized."
+                  ? "Discharge is being created. This can take upto 2 minutes"
                   : undefined
               }
             />
