@@ -59,6 +59,7 @@ export default function DashboardPage() {
     filename: '',
   })
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
 
   useEffect(() => {
     if (userId) {
@@ -318,7 +319,12 @@ export default function DashboardPage() {
               <AccountMenu
                 userId={userId}
                 currentTemplate={doctorTemplate}
-                onOpenTemplateManager={() => setIsTemplateModalOpen(true)}
+                isOpen={isAccountMenuOpen}
+                onOpenChange={setIsAccountMenuOpen}
+                onOpenTemplateManager={() => {
+                  setIsAccountMenuOpen(false)
+                  setIsTemplateModalOpen(true)
+                }}
                 onLogout={handleSwitchAccount}
               />
             </div>

@@ -25,6 +25,7 @@ export default function TemplateManagerModal({
   onTemplateSaved,
 }) {
   const [stagedFiles, setStagedFiles] = useState(currentTemplate.files || [])
+  const prevStagedFilesRef = useRef(currentTemplate.files || [])
   const [applyScope, setApplyScope] = useState(currentTemplate.isOneOff ? 'one_off' : 'default')
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -39,11 +40,29 @@ export default function TemplateManagerModal({
   useEffect(() => {
     if (isOpen) {
       setStagedFiles(currentTemplate.files || [])
+      prevStagedFilesRef.current = currentTemplate.files || []
       setApplyScope(currentTemplate.isOneOff ? 'one_off' : 'default')
       setError(null)
       isAddingMoreRef.current = false
     }
   }, [isOpen, currentTemplate])
+
+  useEffect(() => {
+    if (stagedFiles.length > 0) {
+      prevStagedFilesRef.current = stagedFiles
+    }
+  }, [stagedFiles])
+
+  // Close on Escape key
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown)
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
 
   const getCategory = useCallback((file) => {
     const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
@@ -127,10 +146,25 @@ export default function TemplateManagerModal({
   }
 
   const handleDownloadExisting = async () => {
-    if (!userId) return
+    if (!userId && !currentTemplate?.files?.length) return
     setDownloading(true)
     setError(null)
     try {
+      // 1. If file object is already in local memory/IndexedDB, download directly
+      if (currentTemplate?.files?.[0]) {
+        const file = currentTemplate.files[0]
+        const url = window.URL.createObjectURL(file)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = currentTemplate.filename || file.name || 'hospital-template'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        return
+      }
+
+      // 2. Otherwise download from cloud R2
       const { blob, filename } = await downloadDoctorTemplateFile(userId)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -207,6 +241,7 @@ export default function TemplateManagerModal({
   }
 
   const handleRemove = async () => {
+    prevStagedFilesRef.current = []
     // 1. Instantly clear locally and close modal without waiting
     try {
       await clearDoctorTemplate(userId)
@@ -230,6 +265,15 @@ export default function TemplateManagerModal({
         console.warn('Background cloud template deletion warning:', err)
       })
     }
+  }
+
+  const handleBack = () => {
+    if (prevStagedFilesRef.current && prevStagedFilesRef.current.length > 0 && stagedFiles.length === 0) {
+      setStagedFiles(prevStagedFilesRef.current)
+      setError(null)
+      return
+    }
+    onClose()
   }
 
   if (!isOpen) return null
@@ -311,47 +355,33 @@ export default function TemplateManagerModal({
           {stagedFiles.length === 0 ? (
             isCustomActive ? (
               /* Active Saved Profile Sample Card */
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 sm:p-3.5">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 sm:p-3.5">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-800 font-bold text-xs uppercase">
                     {(currentTemplate.filename || '').split('.').pop() || 'DOC'}
                   </span>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-xs font-semibold text-slate-900" title={currentTemplate.filename}>
-                        {currentTemplate.filename || 'Sample Discharge'}
-                      </p>
-                      <span className="hidden sm:inline-flex items-center rounded-full bg-teal-50 border border-teal-200 px-1.5 py-0.5 text-[10px] font-medium text-teal-700 shrink-0">
-                        Active Default
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate">
-                      Applied automatically to format all discharges
+                    <p className="truncate text-xs font-semibold text-slate-900" title={currentTemplate.filename}>
+                      {currentTemplate.filename || 'Sample Discharge'}
+                    </p>
+                    <p className="text-[11px] text-teal-700 font-medium truncate">
+                      Active Default
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                  <button
-                    type="button"
-                    onClick={handleDownloadExisting}
-                    disabled={downloading}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
-                    title="Download active template file from cloud"
-                  >
-                    <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span>{downloading ? 'Downloading…' : 'Download'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleTriggerReplace}
-                    className="inline-flex items-center rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 transition-colors cursor-pointer"
-                  >
-                    Replace
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadExisting}
+                  disabled={downloading}
+                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                  title="Download sample file"
+                >
+                  <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>{downloading ? 'Downloading…' : 'Download'}</span>
+                </button>
               </div>
             ) : (
               /* Empty State: Dropzone */
@@ -415,23 +445,14 @@ export default function TemplateManagerModal({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
-                        {isImage ? (
+                      <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
+                        {isImage && (
                           <button
                             type="button"
                             onClick={handleTriggerAddMore}
                             className="text-xs font-medium text-teal-700 hover:text-teal-900 cursor-pointer transition-colors"
                           >
-                            <span className="sm:hidden">+ Add page</span>
-                            <span className="hidden sm:inline">+ Add page</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleTriggerReplace}
-                            className="text-xs font-medium text-teal-700 hover:text-teal-900 underline cursor-pointer transition-colors"
-                          >
-                            Replace
+                            + Add page
                           </button>
                         )}
                         <button
@@ -514,108 +535,72 @@ export default function TemplateManagerModal({
                 )
               })()}
 
-              {/* Scope Selection: One-off vs Default */}
-              <div className="pt-0.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {/* Option 1: Just for this discharge */}
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setApplyScope('one_off')}
-                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setApplyScope('one_off')}
-                    className={`cursor-pointer rounded-xl border p-3 transition-all ${
-                      applyScope === 'one_off'
-                        ? 'border-teal-600 bg-teal-50/50 shadow-xs ring-1 ring-teal-600/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">Use for this Discharge only</span>
-                      <span
-                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                          applyScope === 'one_off'
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : 'border-slate-300'
-                        }`}
-                      >
-                        {applyScope === 'one_off' && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                        )}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-500 leading-snug">
-                      Apply just for now without saving for future
-                    </p>
-                  </div>
-
-                  {/* Option 2: Save as default for future discharges */}
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setApplyScope('default')}
-                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setApplyScope('default')}
-                    className={`cursor-pointer rounded-xl border p-3 transition-all ${
-                      applyScope === 'default'
-                        ? 'border-teal-600 bg-teal-50/50 shadow-xs ring-1 ring-teal-600/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">Use and Save for Future</span>
-                      <span
-                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                          applyScope === 'default'
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : 'border-slate-300'
-                        }`}
-                      >
-                        {applyScope === 'default' && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                        )}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-500 leading-snug">
-                      Keep as default for all future patients
-                    </p>
-                  </div>
+              {/* Scope Selection: Clean doctor-friendly checkbox */}
+              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3 cursor-pointer hover:bg-slate-100/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={applyScope === 'default'}
+                  onChange={(e) => setApplyScope(e.target.checked ? 'default' : 'one_off')}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer shrink-0"
+                />
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold text-slate-900 block">
+                    Save as default for future discharges
+                  </span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {applyScope === 'default'
+                      ? 'Format future discharges using this template'
+                      : 'Used for this discharge only'}
+                  </p>
                 </div>
-              </div>
+              </label>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-3.5">
-          {isCustomActive && (
-            <button
-              type="button"
-              disabled={saving}
-              onClick={handleRemove}
-              className="text-xs font-semibold text-red-600 hover:text-red-700 cursor-pointer transition-colors"
-            >
-              Remove Sample
-            </button>
-          )}
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-6 sm:py-3.5">
+          {/* Left: Cancel (when staging) / Back (when viewing active sample) */}
+          <button
+            type="button"
+            onClick={stagedFiles.length > 0 ? onClose : handleBack}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shadow-2xs"
+          >
+            {stagedFiles.length > 0 ? (
+              <span>Cancel</span>
+            ) : isCustomActive ? (
+              <>
+                <span aria-hidden="true">←</span>
+                <span>Back</span>
+              </>
+            ) : (
+              <span>Close</span>
+            )}
+          </button>
 
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              {stagedFiles.length === 0 ? 'Close' : 'Cancel'}
-            </button>
-
-            {stagedFiles.length > 0 && (
+          {/* Right: Apply Sample (when staging) OR Delete Sample (when viewing existing) */}
+          <div className="flex items-center gap-2">
+            {stagedFiles.length > 0 ? (
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={saving || stagedFiles.length === 0}
-                className="rounded-xl bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 transition-colors disabled:opacity-50 cursor-pointer"
+                className="rounded-xl bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
               >
                 {saving ? 'Applying…' : 'Apply Sample'}
               </button>
+            ) : (
+              isCustomActive && (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleRemove}
+                  className="rounded-xl border border-red-200/90 bg-red-50/60 hover:bg-red-100/70 px-3.5 py-2 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  Delete Sample
+                </button>
+              )
             )}
           </div>
         </div>

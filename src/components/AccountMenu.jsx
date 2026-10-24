@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { getStoredDoctorPhone, isDashboardAllowedUser } from '../config.js'
+import { downloadDoctorTemplateFile } from '../api/dischargeApi.js'
 
 export default function AccountMenu({
   userId,
@@ -10,6 +11,7 @@ export default function AccountMenu({
   onLogout,
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const menuRef = useRef(null)
 
   const doctorPhone = getStoredDoctorPhone()
@@ -46,6 +48,41 @@ export default function AccountMenu({
     setIsOpen(false)
     if (window.confirm('Log out from this doctor profile on this device?')) {
       onLogout?.()
+    }
+  }
+
+  const handleDownload = async (e) => {
+    e.stopPropagation()
+    if (!userId && !currentTemplate?.files?.length) return
+    setDownloading(true)
+    try {
+      if (currentTemplate?.files?.[0]) {
+        const file = currentTemplate.files[0]
+        const url = URL.createObjectURL(file)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = currentTemplate.filename || file.name || 'sample-discharge'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        return
+      }
+
+      const { blob, filename } = await downloadDoctorTemplateFile(userId)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename || currentTemplate.filename || 'sample-discharge'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.warn('Failed to download template:', err)
+      alert(err instanceof Error ? err.message : 'Failed to download template file')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -107,23 +144,15 @@ export default function AccountMenu({
 
           {/* Featured Hero: Sample Discharge Format */}
           <div className="p-2">
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => {
-                setIsOpen(false)
-                onOpenTemplateManager?.()
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  setIsOpen(false)
-                  onOpenTemplateManager?.()
-                }
-              }}
-              className="group cursor-pointer rounded-xl border border-teal-200/90 bg-gradient-to-br from-teal-50/80 via-white to-emerald-50/40 p-3 shadow-2xs transition-all hover:border-teal-400 hover:shadow-sm"
-            >
+            <div className="group rounded-xl border border-teal-200/90 bg-gradient-to-br from-teal-50/80 via-white to-emerald-50/40 p-3 shadow-2xs transition-all hover:border-teal-400 hover:shadow-sm">
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                  onClick={() => {
+                    setIsOpen(false)
+                    onOpenTemplateManager?.()
+                  }}
+                >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white shadow-2xs">
                     <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -143,10 +172,49 @@ export default function AccountMenu({
                     </h4>
                   </div>
                 </div>
-                <span className="text-[11px] font-bold text-teal-700 group-hover:text-teal-900 flex items-center gap-0.5 shrink-0 mt-0.5">
-                  {currentTemplate.mode === 'custom' ? 'Change' : 'Add'} →
-                </span>
+
+                {currentTemplate.mode !== 'custom' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false)
+                      onOpenTemplateManager?.()
+                    }}
+                    className="text-[11px] font-bold text-teal-700 hover:text-teal-900 flex items-center gap-0.5 shrink-0 mt-0.5 cursor-pointer"
+                  >
+                    Add →
+                  </button>
+                )}
               </div>
+
+              {/* Direct Quick Actions for Custom Active Template */}
+              {currentTemplate.mode === 'custom' && (
+                <div className="mt-2.5 flex items-center gap-2 border-t border-teal-100/80 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-teal-200/90 bg-white py-1.5 px-2 text-[11px] font-semibold text-teal-700 shadow-2xs hover:bg-teal-50 hover:border-teal-300 transition-all cursor-pointer disabled:opacity-50"
+                    title="Download active sample discharge template"
+                  >
+                    <svg className="h-3.5 w-3.5 text-teal-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>{downloading ? 'Downloading…' : 'Download'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false)
+                      onOpenTemplateManager?.()
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-transparent bg-teal-50/70 hover:bg-teal-100/60 py-1.5 px-2 text-[11px] font-semibold text-teal-800 transition-colors cursor-pointer"
+                  >
+                    <span>Change</span>
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
